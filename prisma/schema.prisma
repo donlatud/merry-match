@@ -1,0 +1,130 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ตาราง Users สำหรับเก็บข้อมูลพื้นฐานและการเข้าสู่ระบบ
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  username      String    @unique
+  role          Role      @default(USER)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  // Relationship: 1 User มีได้ 1 Profile
+  profile       Profile?
+
+  @@map("users") // ตั้งชื่อตารางในฐานข้อมูลเป็นตัวเล็ก
+}
+
+// ตาราง Profile สำหรับเก็บข้อมูลส่วนตัวของผู้ใช้ (Dating Profile)
+model Profile {
+  id                String    @id @default(uuid())
+  user_id           String    @unique
+  full_name         String
+  birthday          DateTime
+  location          String
+  city              String
+  gender            String
+  sexual_preference String
+  racial_preference String
+  meeting_interest  String
+  bio               String?   @db.Text
+  
+  // Relationship: เชื่อมกลับไปที่ User
+  user              User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  // Relationship: 1 Profile มีได้หลายรูปภาพ
+  images            ProfileImage[]
+
+  // Swipe relations
+  requestedSwipes   Swipe[]   @relation("RequestedSwipes")
+  receivedSwipes    Swipe[]   @relation("ReceivedSwipes")
+
+  // Subscription (1 Profile มีได้ 1 subscription ที่ active)
+  subscription      UserSubscription?
+
+  @@map("profiles")
+}
+
+// ตาราง ProfileImage สำหรับเก็บ URL รูปภาพจาก Supabase Storage
+model ProfileImage {
+  id         Int      @id @default(autoincrement())
+  profile_id String
+  image_url  String
+  order      Int      @default(0) // ลำดับของรูปภาพ
+
+  profile    Profile  @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+
+  @@map("profile_images")
+}
+
+// กำหนดประเภท Role
+enum Role {
+  USER
+  ADMIN
+}
+
+// ตาราง Test สำหรับทดสอบ API (optional)
+model Test {
+  id   Int    @id @default(autoincrement())
+  name String
+  @@map("test")
+}
+
+// 4. ตาราง Swipes สำหรับระบบ Match (ปัดซ้าย/ปัดขวา)
+model Swipe {
+  id            Int          @id @default(autoincrement())
+  requester_id  String       // คนที่ส่งแรงกด (คนปัด)
+  receiver_id   String       // คนที่รับ (คนถูกปัด)
+  status        SwipeStatus  // 'LIKE' (ปัดขวา), 'DISLIKE' (ปัดซ้าย)
+  created_at    DateTime     @default(now())
+
+  // Relationships
+  requester     Profile      @relation("RequestedSwipes", fields: [requester_id], references: [id], onDelete: Cascade)
+  receiver      Profile      @relation("ReceivedSwipes", fields: [receiver_id], references: [id], onDelete: Cascade)
+
+  @@map("swipes")
+}
+
+// 5. ตาราง Packages ข้อมูลราคาและสิทธิพิเศษ (Master Data)
+model Package {
+  id              Int                @id @default(autoincrement())
+  name            String
+  price           Decimal            @db.Decimal(10, 2)
+  limit_matching  Int                // จำนวนที่ปัดได้ต่อวัน
+  icon_url        String?
+  created_at      DateTime           @default(now())
+  
+  subscriptions   UserSubscription[]
+
+  @@map("packages")
+}
+
+// 6. ตาราง UserSubscription เก็บประวัติการซื้อแพ็กเกจของผู้ใช้
+model UserSubscription {
+  id            Int       @id @default(autoincrement())
+  profile_id    String    @unique // 1 โปรไฟล์ มีได้ 1 subscription ที่ active
+  package_id    Int
+  status        String    @default("active") // active, expired, cancelled
+  start_date    DateTime  @default(now())
+  end_date      DateTime? // วันหมดอายุ
+
+  profile       Profile   @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  package       Package   @relation(fields: [package_id], references: [id])
+
+  @@map("user_subscriptions")
+}
+
+// เพิ่ม Enum สำหรับสถานะการปัด
+enum SwipeStatus {
+  LIKE
+  DISLIKE
+}
