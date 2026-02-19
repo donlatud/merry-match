@@ -1,6 +1,4 @@
 import React, { forwardRef } from "react";
-import { AlertCircle } from "lucide-react";
-import ExclamationIcon from "../../../../public/merry_icon/icon-exclamation.svg"
 
 const InputBar = forwardRef(
   (
