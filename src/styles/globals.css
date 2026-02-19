@@ -48,7 +48,7 @@
   --red-300: 255 99 144;  /* #FF6390 */
   --red-400: 255 22 89;   /* #FF1659 */
   --red-500: 199 0 57;    /* #C70039 */
-  --red-600: 199 0 57;    /* #C70039 */
+  --red-600: 149 0 43;    /* #95002B */
   --red-700: 100 0 29;    /* #64001D */
   --red-800: 50 0 14;     /* #32000E */
   --red-900: 32 0 9;      /* #200009 */
@@ -101,6 +101,9 @@
   --utility-bg: 22 4 4;         /* #160404 */
   --utility-bg-main: 252 252 254; /* #FCFCFE */
   --utility-linear: radial-gradient(106.64% 594.8% at 3.13% 0%, #742138 23.43%, #A878BF 100%);
+
+  /* Button shadow: x 2, y 2, blur 12, spread 0, #403285 16% */
+  --shadow-button: 2px 2px 12px 0 rgba(64, 50, 133, 0.16);
 }
 
 @theme inline {
@@ -199,6 +202,8 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  /* Button drop shadow: x 2, y 2, blur 12, spread 0, #403285 16% */
+  --shadow-button: 2px 2px 12px 0 rgba(64, 50, 133, 0.16);
 
   /* Typography (fontSize) */
   --text-headline1: 60px;
@@ -243,15 +248,8 @@
   --text-tagline--font-weight: 500;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
+  background: #ffffff;
   color: var(--foreground);
   font-family: "Nunito", ui-sans-serif, system-ui, sans-serif;
 }
@@ -298,7 +296,7 @@ body {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-white text-foreground;
   }
 }
 
