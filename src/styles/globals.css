@@ -305,3 +305,7 @@ body {
     font-variant-numeric: lining-nums proportional-nums;
   }
 }
+@keyframes shrink {
+  from { width: 100%; }
+  to   { width: 0%; }
+}

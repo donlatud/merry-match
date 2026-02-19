@@ -1,5 +1,6 @@
 import "@/styles/globals.css";
 import { Nunito, Prompt } from "next/font/google";
+import { Toaster } from "sonner";
 
 const nunito = Nunito({
   subsets: ["latin"],
@@ -19,6 +20,7 @@ export default function App({ Component, pageProps }) {
   return (
     <main className={`${nunito.variable} ${prompt.variable}`}>
       <Component {...pageProps} />
+      <Toaster position="bottom-right" offset={{ bottom: 16, right: 16 }} />
     </main>
   );
 }
