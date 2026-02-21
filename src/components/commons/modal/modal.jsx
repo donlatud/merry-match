@@ -3,6 +3,7 @@ import React from "react";
 /**
  * Modal ยืนยันการกระทำ (มีปุ่มซ้าย + ขวา)
  *
+ * 
  * วิธีใช้
  * ------
  * 1. ใช้ state ควบคุม open/close เช่น useState(false)
@@ -40,9 +41,9 @@ import React from "react";
  *
  */
 const btnSecondary =
-  "px-6 py-3 rounded-full bg-red-100 text-red-700 text-body2 font-semibold shadow hover:bg-red-200 transition cursor-pointer";
+  "w-full sm:w-auto px-6 py-3 rounded-full bg-red-100 text-red-700 text-body2 font-semibold shadow hover:bg-red-200 transition cursor-pointer";
 const btnPrimary =
-  "px-6 py-3 rounded-full bg-red-500 text-white text-body2 font-semibold shadow hover:bg-red-600 transition cursor-pointer";
+  "w-full sm:w-auto px-6 py-3 rounded-full bg-red-500 text-white text-body2 font-semibold shadow hover:bg-red-600 transition cursor-pointer";
 
 const Modal = ({
   open = false,
@@ -63,14 +64,15 @@ const Modal = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 shadow-button"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-foreground/20 md:p-6"
       aria-modal="true"
       role="dialog"
     >
-      <div className="min-w-[528px] max-w-full bg-card text-card-foreground rounded-2xl shadow-lg p-0 border border-border">
-        <div className="flex justify-between items-center px-6 py-3">
+      <div className="w-full min-w-0 max-w-[min(100%,32rem)] md:min-w-[528px] md:max-w-[528px] bg-card text-card-foreground rounded-2xl shadow-button p-0 border border-border my-auto">
+        {/* หัวข้อ + ปุ่มปิด */}
+        <div className="flex justify-between items-center gap-3 px-4 py-3 md:px-6">
           <div
-            className="text-body1 font-semibold text-card-foreground"
+            className="text-body2 font-semibold text-card-foreground truncate min-w-0 md:text-body1"
             data-testid="modal-title"
           >
             {title}
@@ -78,7 +80,7 @@ const Modal = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full transition"
+            className="shrink-0 rounded-full p-1 transition hover:bg-red-100"
             aria-label="Close"
           >
             <img
@@ -86,14 +88,15 @@ const Modal = ({
               alt=""
               width={24}
               height={24}
-              className="size-6 hover:bg-red-100 hover:rounded-full transition cursor-pointer"
+              className="size-6"
             />
           </button>
         </div>
         <hr className="border-border" />
-        <div className="p-6">
-          <div className="text-muted-foreground mb-7 text-body2">{message}</div>
-          <div className="flex gap-4">
+        {/* ข้อความ + ปุ่มซ้าย/ขวา */}
+        <div className="p-4 md:p-6">
+          <div className="text-muted-foreground mb-5 md:mb-7 text-body2 text-sm md:text-base">{message}</div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
             <button
               type="button"
               onClick={onLeftClick}
