@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import axios from "axios";
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
+import { useAuth } from "@/hooks/login/useAuth";
 
 const SCROLL_OFFSET_PX = 64;
 
@@ -11,6 +12,8 @@ export default function LandingPage() {
   const [testData, setTestData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const {logout} = useAuth();
 
   const fetchTestData = async () => {
     try {
@@ -169,6 +172,12 @@ export default function LandingPage() {
         className="mt-4 bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800"
       >
         Refresh Data
+      </button>
+            <button
+        onClick={()=> logout()}
+        className="mt-4 bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800"
+      >
+        logout
       </button>
       <Footer />
     </>
