@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PrimaryButton } from "@/components/commons/button/PrimaryButton";
 import MemberNavBar from "@/components/MemberNavBar";
+import { useAuth } from "@/hooks/login/useAuth";
 
 const SCROLL_OFFSET_PX = 64;
 
 export default function NavBar() {
-  const [isLogin, setIsLogin] = useState(false);
+  // const [isLogin, setIsLogin] = useState(false);
+  const {isAuthenticated} = useAuth();
 
   {
     /* เลื่อนไป section ตาม anchor (มาจากหน้าอื่นด้วย hash (/#why-merry-match) เลื่อนไป section) */
@@ -38,7 +40,7 @@ export default function NavBar() {
           </Link>
 
           {/* Mobile: ไม่ login = Chat + Notification (ซ่อน) + Hamburger | login = MemberNavBar */}
-          {isLogin ? (
+          {isAuthenticated ? (
             <MemberNavBar />
           ) : (
             <>

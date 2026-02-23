@@ -19,9 +19,19 @@ function Calendar({
   buttonVariant = "ghost",
   formatters,
   components,
+  locale,
   ...props
 }) {
   const defaultClassNames = getDefaultClassNames()
+
+  // derive a locale string for Intl APIs from the `locale` prop.
+  // Support passing either a string (e.g. 'en-US') or a date-fns locale object (which has a `code` property).
+  const localeString = (() => {
+    if (!locale) return "en-US";
+    if (typeof locale === "string") return locale;
+    if (typeof locale === "object" && locale.code) return locale.code;
+    return "en-US";
+  })();
 
   return (
     <DayPicker
@@ -34,8 +44,10 @@ function Calendar({
       )}
       captionLayout={captionLayout}
       formatters={{
+        // use Intl (via toLocaleString) with the derived locale string so month names follow the
+        // requested locale instead of the system default. Defaults to en-US.
         formatMonthDropdown: (date) =>
-          date.toLocaleString("default", { month: "short" }),
+          date.toLocaleString(localeString, { month: "short" }),
         ...formatters,
       }}
       classNames={{
@@ -134,6 +146,7 @@ function Calendar({
         },
         ...components,
       }}
+      locale={locale}
       {...props} />
   );
 }

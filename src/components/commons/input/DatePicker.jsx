@@ -1,31 +1,42 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import * as React from "react";
+import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Field } from "@/components/ui/field";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/components/ui/popover";
+import Image from "next/image";
+import { enUS } from "date-fns/locale";
 
 const DatePicker = ({
+  label = "Select date",
   value,
   onChange,
   placeholder = "Pick a date",
   className = "",
+  error = false,
 }) => {
+  const [open, setOpen] = React.useState(false);
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          data-empty={!value}
-          className={`
+    <Field className="mx-auto w-full">
+      {label && (
+        <label className="block mt-2 -mb-1 text-body2 font-medium text-black">
+          {label}
+        </label>
+      )}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            data-empty={!value}
+            className={`
+            relative
             data-[empty=true]:text-muted-foreground 
             justify-between 
             text-left 
@@ -41,28 +52,46 @@ const DatePicker = ({
             outline-none
             pr-4
             text-body2
+            ${error ? "border-utility-red" : ""}
             ${className}
           `}
-        >
-          {value ? (
-            <span className="text-body2">
-              {format(value, "PPP")}
-            </span>
-          ) : (
-            <span className="text-body2 text-gray-600 pl-1">
-              {placeholder}
-            </span>
-          )}
-          <img src="/merry_icon/icon-calendar.svg" className="text-gray-600" />
-        </Button>
-      </PopoverTrigger>
-
-      <PopoverContent className="w-auto p-0">
-        <Calendar
-          mode="single"
-          selected={value}
-          onSelect={onChange}
-          className="
+          >
+            {value ? (
+              <span className="text-body2">
+                {format(value, "PPP", { locale: enUS })}
+              </span>
+            ) : (
+              <span className="text-body2 text-gray-600 pl-1">
+                {placeholder}
+              </span>
+            )}
+            {error && (
+              <Image
+                src="/merry_icon/icon-exclamation.svg"
+                className="absolute right-15 top-1/2 -translate-y-1/2 pointer-events-none"
+                alt="error"
+                width={16}
+                height={16}
+              />
+            )}
+            <Image
+              src="/merry_icon/icon-calendar.svg"
+              alt="calendar-icon"
+              width={24}
+              height={24}
+              className="text-gray-600"
+            />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={value}
+            defaultMonth={value}
+            captionLayout="dropdown"
+            onSelect={onChange}
+            locale = { enUS }
+            className="
             [&_[data-selected=true]>button]:bg-purple-500 
             [&_[data-selected=true]>button]:text-white
             [&_[data-selected=true]>button]:rounded-full
@@ -82,17 +111,20 @@ const DatePicker = ({
             **:data-[today=true]:bg-transparent
             [&_[data-today=true]>button]:bg-gray-300
 
+            [&_[data-today=true][data-selected=true]>button]:bg-purple-500
+          [&_[data-today=true][data-selected=true]>button]:text-white
+
             [&_.rdp-day_button]:group-data-[focused=true]/day:rounded-full!
             [&_.rdp-day_button]:group-data-[focused=true]/day:ring-purple-500!
             [&_.rdp-day_button]:group-data-[focused=true]/day:ring-[1px]!
           "
-        />
-      </PopoverContent>
-    </Popover>
-  )
-}
-
-export default DatePicker
+          />
+        </PopoverContent>
+      </Popover>
+    </Field>
+  );
+};
+export default DatePicker;
 
 // example
 //   const [date, setDate] = useState("");

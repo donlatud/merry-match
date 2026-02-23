@@ -1,4 +1,5 @@
 import React, { forwardRef } from "react";
+import Image from "next/image";
 
 const InputBar = forwardRef(
   (
@@ -39,17 +40,19 @@ const InputBar = forwardRef(
           {...props}
         />
         {error && (
-        <img
+        <Image
           src="/merry_icon/icon-exclamation.svg"
           className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
           alt="error"
+          width={16}
+          height={16}
         />
         )}
 
         {rightIcon && (
-  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-    {rightIcon}
-  </div>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+        {rightIcon}
+      </div>
 )}
       </div>
     );
