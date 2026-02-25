@@ -1,9 +1,67 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { UserIcon } from "@heroicons/react/24/solid";
+import MemberNavDropdown from "@/components/MemberNavDropdown";
+import { useAuth } from "@/hooks/login/useAuth";
 
-export default function MemberNavBar() {
+export default function MemberNavBar({ onLogout }) {
+  const { user } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileImageUrl, setProfileImageUrl] = useState(null);
+  const [profileImageError, setProfileImageError] = useState(false);
+  const profileDropdownRef = useRef(null);
+  const mobileMenuRef = useRef(null);
+
+  const showProfileImage = profileImageUrl && !profileImageError;
+
+  // เตรียมรับรูปโปรไฟล์จาก GET /api/me/profile-images (เมื่อมี API แล้ว)
+  useEffect(() => {
+    if (!user) {
+      setProfileImageUrl(null);
+      return;
+    }
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) return;
+
+    fetch("/api/me/profile-images", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((data) => setProfileImageUrl(data.profile_image_url ?? null))
+      .catch(() => setProfileImageUrl(null));
+  }, [user?.id]);
+
+  useEffect(() => {
+    setProfileImageError(false);
+  }, [profileImageUrl]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        profileDropdownRef.current &&
+        !profileDropdownRef.current.contains(event.target)
+      ) {
+        setProfileOpen(false);
+      }
+      if (
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(event.target)
+      ) {
+        setMobileMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Close mobile menu when clicking outside (handled by backdrop now)
 
   return (
     <>
@@ -13,7 +71,7 @@ export default function MemberNavBar() {
           {/* TODO: link to chat — ใส่ตรงนี้ */}
           <Link
             href="/chat"
-            className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 transition-opacity hover:opacity-90 cursor-pointer"
+            className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 hover:bg-purple-100 cursor-pointer"
             aria-label="Chat"
           >
             <img
@@ -26,7 +84,7 @@ export default function MemberNavBar() {
           {/* TODO: link to notifications — ใส่ตรงนี้ */}
           <Link
             href="/notifications"
-            className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 transition-opacity hover:opacity-90 cursor-pointer"
+            className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 hover:bg-purple-100 cursor-pointer"
             aria-label="Notifications"
           >
             <img
@@ -37,19 +95,33 @@ export default function MemberNavBar() {
           </Link>
         </div>
 
-        {/* TODO: link to profile — ใส่ตรงนี้ */}
-        <Link
-          href="/profile"
-          className="flex flex-col justify-between w-5 h-4 cursor-pointer"
-        >
-          <span className="block w-full h-0.5 bg-gray-700 rounded-full"></span>
-          <span className="block w-full h-0.5 bg-gray-700 rounded-full"></span>
-          <span className="block w-full h-0.5 bg-gray-700 rounded-full"></span>
-        </Link>
+        {/* Mobile Menu Toggle */}
+        <div className="relative" ref={mobileMenuRef}>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="flex flex-col justify-between w-5 h-4 cursor-pointer"
+            aria-label="Menu"
+            aria-expanded={mobileMenuOpen}
+          >
+            <span className="block w-full h-0.5 bg-gray-700 rounded-full"></span>
+            <span className="block w-full h-0.5 bg-gray-700 rounded-full"></span>
+            <span className="block w-full h-0.5 bg-gray-700 rounded-full"></span>
+          </button>
+
+          {/* Mobile Dropdown Menu */}
+          {mobileMenuOpen && (
+            <MemberNavDropdown
+              variant="mobile"
+              onClose={() => setMobileMenuOpen(false)}
+              onLogout={onLogout}
+            />
+          )}
+        </div>
       </div>
 
       {/* Desktop: Start Matching + Membership + Notification + Profile */}
-      <div className="hidden lg:flex items-center gap-8">
+      <div className="hidden lg:flex items-center gap-11">
         <Link
           href="/matching-page"
           className="text-body2 text-purple-800 font-bold hover:underline cursor-pointer"
@@ -67,7 +139,7 @@ export default function MemberNavBar() {
           <button
             type="button"
             onClick={() => setNotifOpen((o) => !o)}
-            className="flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 transition-opacity hover:opacity-90 cursor-pointer"
+            className="flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 transition-opacity hover:bg-purple-100 cursor-pointer"
             aria-label="Notifications"
             aria-expanded={notifOpen}
           >
@@ -78,20 +150,36 @@ export default function MemberNavBar() {
             />
           </button>
 
-          {/* TODO: Profile dropdown — ใส่ตรงนี้ */}
-          <button
-            type="button"
-            onClick={() => setProfileOpen((o) => !o)}
-            className="flex items-center justify-center w-12 h-12 rounded-full overflow-hidden bg-gray-200 cursor-pointer transition-opacity hover:opacity-90"
-            aria-label="Profile"
-            aria-expanded={profileOpen}
-          >
-            <img
-              src="/merry_icon/icon-user.svg"
-              alt=""
-              className="w-5 h-5 text-gray-600"
-            />
-          </button>
+          {/* Profile dropdown */}
+          <div className="relative" ref={profileDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setProfileOpen((o) => !o)}
+              className="flex items-center justify-center w-12 h-12 rounded-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-purple-100"
+              aria-label="Profile"
+              aria-expanded={profileOpen}
+            >
+              {showProfileImage ? (
+                <img
+                  src={profileImageUrl}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                  onError={() => setProfileImageError(true)}
+                />
+              ) : (
+                <UserIcon className="size-5 text-red-200" />
+              )}
+            </button>
+
+            {/* Profile Dropdown Menu */}
+            {profileOpen && (
+              <MemberNavDropdown
+                variant="desktop"
+                onClose={() => setProfileOpen(false)}
+                onLogout={onLogout}
+              />
+            )}
+          </div>
         </div>
       </div>
     </>

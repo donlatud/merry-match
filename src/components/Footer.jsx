@@ -21,21 +21,20 @@ const socialLinks = [
 export default function Footer() {
   return (
     <footer className="bg-gray-100 ">
-      <div className="w-full max-w-7xl lg:mx-auto p-6 lg:py-12 lg:px-40">
+      <div className="w-full max-w-[1120px] lg:mx-auto p-6 lg:py-12 lg:px-40">
         {/* Desktop: Figma wrapper 1120×275*/}
-        <div className="flex flex-col items-center text-center bg-transparent p-0 lg:w-full lg:max-w-[1120px] lg:mx-auto lg:h-72 lg:flex lg:flex-col lg:justify-between lg:items-center gap-10 lg:pb-4">
+        <div className="flex flex-col items-center text-center bg-transparent p-0 lg:w-full lg:mx-auto lg:h-72 lg:flex lg:flex-col lg:justify-between lg:items-center gap-10 lg:pb-4">
           {/* Logo + Tagline (top group) */}
           <div className="flex flex-col items-center">
-            <Link
-              href="/"
-              className="flex items-center shrink-0 cursor-pointer"
+            <div
+              className="flex items-center shrink-0"
             >
               <img
                 src="/merry_icon/logo-merry-match.svg"
                 alt="Merry Match"
                 className="h-20 w-auto"
               />
-            </Link>
+            </div>
             <p className="text-body1 text-gray-700 w-full">
               New generation of online dating website for everyone
             </p>
