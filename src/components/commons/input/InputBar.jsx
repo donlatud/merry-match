@@ -9,7 +9,8 @@ const InputBar = forwardRef(
       error = false,
       disabled = false,
       className = "",
-      rightIcon="",
+      rightIcon = "",
+      hideErrorIcon = false,
       ...props
     },
     ref
@@ -39,11 +40,11 @@ const InputBar = forwardRef(
           `}
           {...props}
         />
-        {error && (
+        {error && !hideErrorIcon && (
         <Image
           src="/merry_icon/icon-exclamation.svg"
           className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-          alt="error"
+          alt=""
           width={16}
           height={16}
         />

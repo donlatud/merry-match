@@ -193,16 +193,6 @@ const MultiSelect = ({
           placeholder={value.length === 0 ? placeholder : ""}
           className="flex-1 outline-none bg-transparent min-w-[120px] placeholder:text-gray-600"
         />
-
-        {error && (
-          <Image
-            src="/merry_icon/icon-exclamation.svg"
-            className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none"
-            alt="error"
-            width={16}
-            height={16}
-          />
-        )}
       </div>
 
       {inputValue && filteredSuggestions.length > 0 && (
@@ -225,9 +215,6 @@ const MultiSelect = ({
         </div>
       )}
 
-      <div className="mt-1 text-xs text-gray-500">
-        {inputValue.length}/{MAX_LENGTH} characters • {value.length}/{MAX_TAGS} tags
-      </div>
     </div>
   );
 };
