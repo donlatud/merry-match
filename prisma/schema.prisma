@@ -25,6 +25,7 @@ model User {
 }
 
 // ตาราง Profile สำหรับเก็บข้อมูลส่วนตัวของผู้ใช้ (Dating Profile)
+// Map กับฟอร์ม register: full_name←name, birthday←date, gender←sexualIdentity (step2)
 model Profile {
   id                String    @id @default(uuid())
   user_id           String    @unique
@@ -32,15 +33,17 @@ model Profile {
   birthday          DateTime
   location          String
   city              String
-  gender            String
+  gender            String    // ฟอร์ม: sexual_identity (Male, Female, Non-binary, Other)
   sexual_preference String
   racial_preference String
   meeting_interest  String
   bio               String?   @db.Text
-  
+
   // Relationship: เชื่อมกลับไปที่ User
   user              User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   
+  // Relationship: 1 Profile มีได้หลาย hobbies (แยกตาราง profile_hobbies)
+  profileHobbies    ProfileHobby[]
   // Relationship: 1 Profile มีได้หลายรูปภาพ
   images            ProfileImage[]
 
@@ -52,6 +55,28 @@ model Profile {
   subscription      UserSubscription?
 
   @@map("profiles")
+}
+
+// ตาราง Hobby (master) เก็บรายการ hobby ทั้งระบบ
+model Hobby {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  profileHobbies ProfileHobby[]
+
+  @@map("hobbies")
+}
+
+// ตาราง ProfileHobby เชื่อม Profile กับ Hobby (profile_id + hobby_id เป็น primary key)
+model ProfileHobby {
+  profile_id String
+  hobby_id   Int
+
+  profile Profile @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  hobby   Hobby   @relation(fields: [hobby_id], references: [id], onDelete: Cascade)
+
+  @@id([profile_id, hobby_id])
+  @@map("profile_hobbies")
 }
 
 // ตาราง ProfileImage สำหรับเก็บ URL รูปภาพจาก Supabase Storage
