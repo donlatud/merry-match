@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { format } from "date-fns";
+import { format, subYears } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Field } from "@/components/ui/field";
@@ -41,10 +41,16 @@ const DatePicker = ({
   placeholder = "Pick a date",
   className = "",
   error = false,
+  hideErrorIcon = false,
+  minAge,
 }) => {
   const [open, setOpen] = React.useState(false);
 
-  const [month, setMonth] = React.useState(value ?? new Date());
+  const today = React.useMemo(() => new Date(), []);
+  const endMonth = minAge != null ? subYears(today, minAge) : undefined;
+  const startMonth = minAge != null ? subYears(today, 100) : undefined;
+  const disabledAfter = minAge != null ? subYears(today, minAge) : undefined;
+  const defaultMonth = value ?? endMonth ?? today;
 
   return (
     <Field className="mx-auto w-full">
@@ -87,11 +93,11 @@ const DatePicker = ({
                 {placeholder}
               </span>
             )}
-            {error && (
+            {error && !hideErrorIcon && (
               <Image
                 src="/merry_icon/icon-exclamation.svg"
                 className="absolute right-15 top-1/2 -translate-y-1/2 pointer-events-none"
-                alt="error"
+                alt=""
                 width={16}
                 height={16}
               />
@@ -109,24 +115,12 @@ const DatePicker = ({
           <Calendar
             mode="single"
             selected={value}
-            month={month}
-            onMonthChange={setMonth}
-            defaultMonth={maxDate18}
-            toDate={maxDate18} // 🔥 จำกัดอายุ 18+
-            captionLayout="label"
-            fromYear={1960}
-            toYear={maxDate18.getFullYear()}
-            onSelect={(date) => {
-              if (!date) return;
-
-              if (!isOver18(date)) {
-                alert("You must be at least 18 years old.");
-                return;
-              }
-
-              onChange(date);
-              setMonth(date);
-            }}
+            defaultMonth={defaultMonth}
+            startMonth={startMonth}
+            endMonth={endMonth}
+            disabled={disabledAfter != null ? { after: disabledAfter } : undefined}
+            captionLayout="dropdown"
+            onSelect={onChange}
             locale={enUS}
             className="
     [&_[data-selected=true]>button]:bg-purple-500 

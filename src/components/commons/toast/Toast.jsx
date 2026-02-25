@@ -28,12 +28,12 @@ export function Toast({
     >
       {/* Accent bar */}
       <div
-        className={`absolute left-0 top-[16%] h-[68%] w-[3px] rounded-r-full bg-gradient-to-b ${accentClass}`}
+        className={`absolute left-0 top-[16%] h-[68%] w-[3px] rounded-r-full bg-linear-to-b ${accentClass}`}
       />
 
       {/* Icon: รองรับทั้ง URL (string) และ React element */}
       <div
-        className={`flex-shrink-0 w-[34px] h-[34px] rounded-full ${iconBgClass} flex items-center justify-center [&_svg]:w-[18px] [&_svg]:h-[18px]`}
+        className={`shrink-0 w-[34px] h-[34px] rounded-full ${iconBgClass} flex items-center justify-center [&_svg]:w-[18px] [&_svg]:h-[18px]`}
       >
         {typeof icon === "string" ? (
           <img src={icon} alt="" className="w-[18px] h-[18px]" />
@@ -58,7 +58,7 @@ export function Toast({
       <button
         onClick={() => toast.dismiss(t)}
         className={`
-          flex-shrink-0 w-[22px] h-[22px] rounded-full
+          shrink-0 w-[22px] h-[22px] rounded-full
           ${iconBgClass} text-gray-600
           hover:bg-red-400 hover:text-white
           flex items-center justify-center
@@ -72,7 +72,7 @@ export function Toast({
       {/* Progress bar */}
       <div className="absolute bottom-0 left-0 h-[2px] w-full rounded-b-2xl overflow-hidden opacity-40">
         <div
-          className={`h-full bg-gradient-to-r ${progressClass} animate-[shrink_4s_linear_forwards]`}
+          className={`h-full bg-linear-to-r ${progressClass} animate-[shrink_4s_linear_forwards]`}
         />
       </div>
     </div>
