@@ -13,6 +13,27 @@ import {
 import Image from "next/image";
 import { enUS } from "date-fns/locale";
 
+
+// ====== AGE 18+ LOGIC ======
+
+const today = new Date();
+
+const maxDate18 = new Date(
+  today.getFullYear() - 18,
+  today.getMonth(),
+  today.getDate(),
+);
+
+const isOver18 = (birthDate) => {
+  const cutoff = new Date(
+    today.getFullYear() - 18,
+    today.getMonth(),
+    today.getDate(),
+  );
+
+  return birthDate <= cutoff;
+};
+
 const DatePicker = ({
   label = "Select date",
   value,
@@ -22,6 +43,8 @@ const DatePicker = ({
   error = false,
 }) => {
   const [open, setOpen] = React.useState(false);
+
+  const [month, setMonth] = React.useState(value ?? new Date());
 
   return (
     <Field className="mx-auto w-full">
@@ -46,7 +69,6 @@ const DatePicker = ({
             px-4
             py-3
             border
-            border-gray-400
             rounded-lg
             focus:border-purple-500
             outline-none
@@ -87,43 +109,54 @@ const DatePicker = ({
           <Calendar
             mode="single"
             selected={value}
-            defaultMonth={value}
-            captionLayout="dropdown"
-            onSelect={onChange}
-            locale = { enUS }
+            month={month}
+            onMonthChange={setMonth}
+            defaultMonth={maxDate18}
+            toDate={maxDate18} // 🔥 จำกัดอายุ 18+
+            captionLayout="label"
+            fromYear={1960}
+            toYear={maxDate18.getFullYear()}
+            onSelect={(date) => {
+              if (!date) return;
+
+              if (!isOver18(date)) {
+                alert("You must be at least 18 years old.");
+                return;
+              }
+
+              onChange(date);
+              setMonth(date);
+            }}
+            locale={enUS}
             className="
-            [&_[data-selected=true]>button]:bg-purple-500 
-            [&_[data-selected=true]>button]:text-white
-            [&_[data-selected=true]>button]:rounded-full
-            [&_[data-selected=true]>button]:border-none  
-            [&_button[data-selected-single=true]]:rounded-full!
+    [&_[data-selected=true]>button]:bg-purple-500 
+    [&_[data-selected=true]>button]:text-white
+    [&_[data-selected=true]>button]:rounded-full
+    [&_[data-selected=true]>button]:border-none  
+    [&_button[data-selected-single=true]]:rounded-full!
 
-            [&_.rdp-day_range_start]:bg-transparent
-            [&_.rdp-day_range_end]:bg-transparent
+    [&_.rdp-day_range_start]:bg-transparent
+    [&_.rdp-day_range_end]:bg-transparent
 
-            [&_[data-focus=true]>button]:rounded-full!
-            [&_[data-focus=true]>button]:border-purple-500!
-            [&_[data-focus=true]>button]:ring-0!
-            [&_[data-focus=true]>button]:outline-none!      
+    [&_[data-focus=true]>button]:rounded-full!
+    [&_[data-focus=true]>button]:border-purple-500!
+    [&_[data-focus=true]>button]:ring-0!
+    [&_[data-focus=true]>button]:outline-none!      
 
-            [&_[data-today=true]>button]:rounded-full
-            [&_[data-today=true]>button]:border-2
-            **:data-[today=true]:bg-transparent
-            [&_[data-today=true]>button]:bg-gray-300
+    [&_[data-today=true]>button]:rounded-full
+    [&_[data-today=true]>button]:border-2
+    [&_[data-today=true]>button]:bg-gray-300
 
-            [&_[data-today=true][data-selected=true]>button]:bg-purple-500
-          [&_[data-today=true][data-selected=true]>button]:text-white
-
-            [&_.rdp-day_button]:group-data-[focused=true]/day:rounded-full!
-            [&_.rdp-day_button]:group-data-[focused=true]/day:ring-purple-500!
-            [&_.rdp-day_button]:group-data-[focused=true]/day:ring-[1px]!
-          "
+    [&_[data-today=true][data-selected=true]>button]:bg-purple-500
+    [&_[data-today=true][data-selected=true]>button]:text-white
+  "
           />
         </PopoverContent>
       </Popover>
     </Field>
   );
 };
+
 export default DatePicker;
 
 // example
@@ -133,3 +166,4 @@ export default DatePicker;
 //       onChange={setDate}
 //       placeholder="Choose date" เปลี่ยน place holder
 //     />
+          
