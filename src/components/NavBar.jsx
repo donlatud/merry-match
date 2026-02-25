@@ -1,18 +1,16 @@
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { PrimaryButton } from "@/components/commons/button/PrimaryButton";
-import MemberNavBar from "@/components/MemberNavBar";
 import { useAuth } from "@/hooks/login/useAuth";
+import MemberNavBar from "@/components/MemberNavBar";
 
 const SCROLL_OFFSET_PX = 64;
 
 export default function NavBar() {
-  // const [isLogin, setIsLogin] = useState(false);
-  const {isAuthenticated} = useAuth();
+  const { isAuthenticated, logout } = useAuth();
+  const router = useRouter();
 
-  {
-    /* เลื่อนไป section ตาม anchor (มาจากหน้าอื่นด้วย hash (/#why-merry-match) เลื่อนไป section) */
-  }
+  // เลื่อนไป section ตาม anchor (มาจากหน้าอื่นด้วย hash (/#why-merry-match) เลื่อนไป section)
   const handleAnchorClick = (e) => {
     const href = e.currentTarget.getAttribute("href");
     if (!href?.startsWith("/#")) return;
@@ -27,11 +25,26 @@ export default function NavBar() {
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50">
+    <div className="sticky top-0 z-50">
       <nav className="h-13 lg:h-22 border-b bg-utility-white shadow-button">
-        <div className="h-full w-full max-w-7xl lg:mx-auto px-5 flex justify-between items-center">
+        <div className="h-full w-full max-w-[1120px] lg:mx-auto px-5 flex justify-between items-center">
           {/* Logo */}
-          <Link href="/" className="flex items-center shrink-0 cursor-pointer">
+          <Link
+            href="/"
+            className="flex items-center shrink-0 cursor-pointer"
+            onClick={(e) => {
+              e.preventDefault();
+              // Animate: Dissolve; animation-timing-function: ease-out; animation-duration: 300ms;
+              document.body
+                .animate([{ opacity: 1 }, { opacity: 0 }], {
+                  duration: 300,
+                  easing: "ease-out",
+                })
+                .addEventListener("finish", () => {
+                  router.push("/");
+                });
+            }}
+          >
             <img
               src="/merry_icon/logo-merry-match.svg"
               alt="Merry Match"
@@ -41,7 +54,7 @@ export default function NavBar() {
 
           {/* Mobile: ไม่ login = Chat + Notification (ซ่อน) + Hamburger | login = MemberNavBar */}
           {isAuthenticated ? (
-            <MemberNavBar />
+            <MemberNavBar onLogout={logout} />
           ) : (
             <>
               <div className="flex items-center gap-5 lg:hidden">
@@ -49,7 +62,7 @@ export default function NavBar() {
                   {/* TODO: link to login — ใส่ตรงนี้ */}
                   <Link
                     href="/login"
-                    className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 transition-opacity hover:opacity-90 cursor-pointer"
+                    className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 transition-opacity hover:bg-purple-100 cursor-pointer"
                     aria-label="Chat"
                   >
                     <img
@@ -60,7 +73,7 @@ export default function NavBar() {
                   </Link>
                   <Link
                     href="/notifications"
-                    className="invisible pointer-events-none flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 transition-opacity hover:opacity-90 cursor-pointer"
+                    className="invisible pointer-events-none flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 transition-opacity hover:bg-purple-100 cursor-pointer"
                     aria-label="Notifications"
                     aria-hidden
                   >
@@ -83,7 +96,7 @@ export default function NavBar() {
               </div>
 
               {/* Desktop: Why/How to + Login  */}
-              <div className="hidden lg:flex items-center gap-8">
+              <div className="hidden lg:flex items-center gap-11">
                 <Link
                   href="/#why-merry-match"
                   onClick={handleAnchorClick}

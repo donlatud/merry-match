@@ -6,6 +6,8 @@ import { PrimaryButton } from "@/components/commons/button/PrimaryButton";
 import { merryToast } from "@/components/commons/toast/MerryToast";
 import { useRouter } from "next/router";
 import NavBar from "@/components/NavBar";
+import { ExclamationCircleIcon } from "@heroicons/react/24/solid";
+import { CheckCircleIcon } from "@heroicons/react/24/solid";
 
 function LoginPage() {
   const { login } = useAuth();
@@ -20,9 +22,9 @@ function LoginPage() {
     setError("");
 
     if (!identifier || !password) {
-      const msg = "Email/Username and password are required";
+      const msg = "Username/email and password are required";
       setError(msg);
-      merryToast.error("Error", msg, "/merry_icon/icon-add.svg");
+      merryToast.error("Missing information!", msg, <ExclamationCircleIcon className="size-10! text-red-400" />);
       return;
     }
 
@@ -31,16 +33,16 @@ function LoginPage() {
       const success = await login(data);
       console.log("success:", success);
       if (!success) {
-        const msg = "Error with Username/Email or Password";
+        const msg = "Invalid email/username or password";
         setError(msg);
-        merryToast.error("Error", msg, "/merry_icon/icon-add.svg");
+        merryToast.error("Login failed!", msg, <ExclamationCircleIcon className="size-10! text-red-400" />);
         return;
       }
 
       merryToast.success(
-        "สำเร็จ!",
-        "ดำเนินการเรียบร้อยแล้ว",
-        "/merry_icon/icon-add.svg",
+        "Success!",
+        "Login successful",
+        <CheckCircleIcon className="size-10! text-green-500" />,
       );
       setTimeout(() => {
         router.push("/");
@@ -48,13 +50,13 @@ function LoginPage() {
     } catch (error) {
       const msg = error.message || "Something went wrong";
       setError(msg);
-      merryToast.error("Error", msg, "/merry_icon/icon-add.svg");
+      merryToast.error("Error", msg, <ExclamationCircleIcon className="size-10! text-red-400" />);
     }
   };
   return (
     <>
       <NavBar />
-      <div className="min-h-90vh flex items-center lg:pt-12 pt-12 lg:h-screen">
+      <div className="min-h-90vh flex items-center lg:h-screen pb-20">
         <Image
           src="/images/login/login-vector.svg"
           alt="Login vector"

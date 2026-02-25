@@ -31,11 +31,15 @@ export function Toast({
         className={`absolute left-0 top-[16%] h-[68%] w-[3px] rounded-r-full bg-gradient-to-b ${accentClass}`}
       />
 
-      {/* Icon */}
+      {/* Icon: รองรับทั้ง URL (string) และ React element */}
       <div
-        className={`flex-shrink-0 w-[34px] h-[34px] rounded-full ${iconBgClass} flex items-center justify-center`}
+        className={`flex-shrink-0 w-[34px] h-[34px] rounded-full ${iconBgClass} flex items-center justify-center [&_svg]:w-[18px] [&_svg]:h-[18px]`}
       >
-        <img src={icon} alt="" className="w-[18px] h-[18px]" />
+        {typeof icon === "string" ? (
+          <img src={icon} alt="" className="w-[18px] h-[18px]" />
+        ) : (
+          icon
+        )}
       </div>
 
       {/* Text */}
