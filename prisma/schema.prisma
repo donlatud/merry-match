@@ -143,7 +143,6 @@ model Package {
   is_active         Boolean            @default(true)
   sort_order        Int?
   created_at        DateTime           @default(now())
-  updated_at        DateTime           @updatedAt
 
   subscriptions     UserSubscription[]
   details           DetailPackage[]
@@ -163,7 +162,19 @@ model UserSubscription {
   gateway               String?               // omise | stripe
   external_charge_id    String?               @unique // จับคู่ webhook
   paid_at               DateTime?             // เวลาชำระสำเร็จจริง
+  id                   Int                    @id @default(autoincrement())
+  profile_id           String                 @unique // 1 โปรไฟล์ มีได้ 1 subscription
+  package_id            Int
+  status                SubscriptionStatus    @default(PENDING)
+  start_date            DateTime              @default(now())
+  end_date              DateTime?             // วันหมดอายุ
+  gateway               String?               // omise | stripe
+  external_charge_id    String?               @unique // จับคู่ webhook
+  paid_at               DateTime?             // เวลาชำระสำเร็จจริง
 
+  profile               Profile                @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  package               Package                @relation(fields: [package_id], references: [id])
+  transactions          PaymentTransaction[]
   profile               Profile                @relation(fields: [profile_id], references: [id], onDelete: Cascade)
   package               Package                @relation(fields: [package_id], references: [id])
   transactions          PaymentTransaction[]
@@ -187,7 +198,6 @@ model PaymentTransaction {
   user_subscription      UserSubscription          @relation(fields: [user_subscription_id], references: [id], onDelete: Cascade)
 
   @@map("payment_transactions")
-  @@schema("public")
 }
 
 model DetailPackage {
@@ -204,8 +214,7 @@ model DetailPackage {
   @@unique([packageId, position])
   @@index([packageId])
 
-  @@map("package_details")
-  @@schema("public")
+  @@map("detail_packages")
 }
 
 // Enum สำหรับสถานะ subscription (Merry Package)
@@ -215,8 +224,6 @@ enum SubscriptionStatus {
   EXPIRED   // หมดอายุ
   CANCELLED // ยกเลิก
   FAILED    // ชำระไม่สำเร็จ
-
-  @@schema("public")
 }
 
 // Enum สำหรับสถานะการชำระเงิน (แต่ละ transaction)
@@ -225,8 +232,6 @@ enum PaymentTransactionStatus {
   PAID
   FAILED
   REFUNDED
-
-  @@schema("public")
 }
 
 // Enum สำหรับสถานะการปัด
