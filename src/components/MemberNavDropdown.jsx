@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRightStartOnRectangleIcon } from "@heroicons/react/24/outline";
+import { useEffect, useRef } from "react";
 
 const MEMBER_NAV_MENU_ITEMS = [
   { href: "/profile", icon: "/merry_icon/icon-user.svg", label: "Profile" },
@@ -25,6 +26,19 @@ export default function MemberNavDropdown({
   onClose,
   onLogout,
 }) {
+  const desktopDropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (variant !== "desktop") return;
+    if (!desktopDropdownRef.current) return;
+
+    desktopDropdownRef.current.animate([{ opacity: 0 }, { opacity: 1 }], {
+      duration: 300,
+      easing: "ease-out",
+      fill: "both",
+    });
+  }, [variant]);
+
   const handleLogout = () => {
     onClose?.();
     onLogout?.();
@@ -78,7 +92,10 @@ export default function MemberNavDropdown({
 
   // Desktop
   return (
-    <div className="absolute right-0 top-full z-50 mt-2 py-2 gap-2 flex flex-col w-[198px] rounded-[16px] bg-utility-white shadow-button">
+    <div
+      ref={desktopDropdownRef}
+      className="absolute right-0 top-full z-50 mt-2 py-2 gap-2 flex flex-col w-[198px] rounded-[16px] bg-utility-white shadow-button"
+    >
       <Link
         href="/merry-package"
         className="flex items-center justify-center gap-[6px] rounded-[99px] mx-2 bg-utility-linear px-6 py-[10px] cursor-pointer"
