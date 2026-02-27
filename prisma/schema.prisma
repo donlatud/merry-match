@@ -121,34 +121,96 @@ model Swipe {
 
 // 5. ตาราง Packages ข้อมูลราคาและสิทธิพิเศษ (Master Data)
 model Package {
-  id              Int                @id @default(autoincrement())
-  name            String
-  price           Decimal            @db.Decimal(10, 2)
-  limit_matching  Int                // จำนวนที่ปัดได้ต่อวัน
-  icon_url        String?
-  created_at      DateTime           @default(now())
-  
-  subscriptions   UserSubscription[]
+  id                Int                @id @default(autoincrement())
+  name              String
+  price             Decimal            @db.Decimal(10, 2)
+  limit_matching    Int                // จำนวนที่ปัดได้ต่อวัน
+  icon_url          String?
+  currency          String             @default("THB")
+  billing_interval  String             @default("month") // month | year
+  features          Json?              // array ข้อความฟีเจอร์สำหรับแสดงบน UI
+  is_active         Boolean            @default(true)
+  sort_order        Int?
+  created_at        DateTime           @default(now())
+  updated_at        DateTime           @updatedAt
+
+  subscriptions     UserSubscription[]
+  details           DetailPackage[]
 
   @@map("packages")
 }
 
 // 6. ตาราง UserSubscription เก็บประวัติการซื้อแพ็กเกจของผู้ใช้
 model UserSubscription {
-  id            Int       @id @default(autoincrement())
-  profile_id    String    @unique // 1 โปรไฟล์ มีได้ 1 subscription ที่ active
-  package_id    Int
-  status        String    @default("active") // active, expired, cancelled
-  start_date    DateTime  @default(now())
-  end_date      DateTime? // วันหมดอายุ
+  id                   Int                    @id @default(autoincrement())
+  profile_id           String                 @unique // 1 โปรไฟล์ มีได้ 1 subscription
+  package_id            Int
+  status                SubscriptionStatus    @default(PENDING)
+  start_date            DateTime              @default(now())
+  end_date              DateTime?             // วันหมดอายุ
+  gateway               String?               // omise | stripe
+  external_charge_id    String?               @unique // จับคู่ webhook
+  paid_at               DateTime?             // เวลาชำระสำเร็จจริง
 
-  profile       Profile   @relation(fields: [profile_id], references: [id], onDelete: Cascade)
-  package       Package   @relation(fields: [package_id], references: [id])
+  profile               Profile                @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  package               Package                @relation(fields: [package_id], references: [id])
+  transactions          PaymentTransaction[]
 
   @@map("user_subscriptions")
 }
 
-// เพิ่ม Enum สำหรับสถานะการปัด
+// 7. ตาราง PaymentTransaction เก็บแต่ละครั้งที่ charge (audit + webhook)
+model PaymentTransaction {
+  id                     Int                       @id @default(autoincrement())
+  user_subscription_id   Int
+  amount                 Decimal                   @db.Decimal(10, 2)
+  currency               String
+  gateway                String
+  external_charge_id     String?                   @unique // id จาก Omise
+  status                 PaymentTransactionStatus  @default(PENDING)
+  created_at             DateTime                  @default(now())
+  paid_at                DateTime?
+
+  user_subscription      UserSubscription          @relation(fields: [user_subscription_id], references: [id], onDelete: Cascade)
+
+  @@map("payment_transactions")
+}
+
+model DetailPackage {
+  id         Int      @id @default(autoincrement())
+
+  packageId  Int
+  package    Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  value      String
+  position   Int
+
+  createdAt  DateTime @default(now())
+
+  @@unique([packageId, position])
+  @@index([packageId])
+
+  @@map("package_details")
+}
+
+// Enum สำหรับสถานะ subscription (Merry Package)
+enum SubscriptionStatus {
+  PENDING   // ยังไม่ชำระเงิน
+  ACTIVE    // ชำระสำเร็จ ใช้สิทธิ์ได้
+  EXPIRED   // หมดอายุ
+  CANCELLED // ยกเลิก
+  FAILED    // ชำระไม่สำเร็จ
+}
+
+// Enum สำหรับสถานะการชำระเงิน (แต่ละ transaction)
+enum PaymentTransactionStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// Enum สำหรับสถานะการปัด
 enum SwipeStatus {
   LIKE
   DISLIKE

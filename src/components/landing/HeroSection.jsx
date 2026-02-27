@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/login/useAuth";
 
 export default function HeroSection() {
   const { isAuthenticated } = useAuth();
+
   return (
     <section
       id="hero"

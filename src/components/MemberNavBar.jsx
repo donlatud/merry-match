@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { UserIcon } from "@heroicons/react/24/solid";
+import axios from "axios";
 import MemberNavDropdown from "@/components/MemberNavDropdown";
 import { useAuth } from "@/hooks/login/useAuth";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function MemberNavBar({ onLogout }) {
   const { user } = useAuth();
@@ -10,33 +11,38 @@ export default function MemberNavBar({ onLogout }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState(null);
-  const [profileImageError, setProfileImageError] = useState(false);
   const profileDropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
 
-  const showProfileImage = profileImageUrl && !profileImageError;
-
-  // เตรียมรับรูปโปรไฟล์จาก GET /api/me/profile-images (เมื่อมี API แล้ว)
   useEffect(() => {
-    if (!user) {
-      setProfileImageUrl(null);
-      return;
-    }
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (!token) return;
+    const fetchProfileImage = async () => {
+      try {
+        if (!user?.id) {
+          setProfileImageUrl(null);
+          return;
+        }
 
-    fetch("/api/me/profile-images", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
-      .then((data) => setProfileImageUrl(data.profile_image_url ?? null))
-      .catch(() => setProfileImageUrl(null));
+        const token =
+          typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        if (!token) {
+          setProfileImageUrl(null);
+          return;
+        }
+
+        const response = await axios.get("/api/me/profile-image", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setProfileImageUrl(response.data.profile_image_url ?? null);
+      } catch {
+        setProfileImageUrl(null);
+      }
+    };
+
+    fetchProfileImage();
   }, [user?.id]);
 
-  useEffect(() => {
-    setProfileImageError(false);
-  }, [profileImageUrl]);
+  const userInitials = (user?.username || "MM").slice(0, 2).toUpperCase();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -155,20 +161,18 @@ export default function MemberNavBar({ onLogout }) {
             <button
               type="button"
               onClick={() => setProfileOpen((o) => !o)}
-              className="flex items-center justify-center w-12 h-12 rounded-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-purple-100"
+              className="flex items-center justify-center w-12 h-12 rounded-full overflow-hidden bg-gray-100 cursor-pointer"
               aria-label="Profile"
               aria-expanded={profileOpen}
             >
-              {showProfileImage ? (
-                <img
-                  src={profileImageUrl}
+              <Avatar size="xl" className="size-16">
+                <AvatarImage
+                  src={profileImageUrl || ""}
                   alt="Profile"
-                  className="h-full w-full object-cover"
-                  onError={() => setProfileImageError(true)}
+                  className="transition duration-300 ease-out group-hover/avatar:grayscale"
                 />
-              ) : (
-                <UserIcon className="size-5 text-red-200" />
-              )}
+                <AvatarFallback>{userInitials}</AvatarFallback>
+              </Avatar>
             </button>
 
             {/* Profile Dropdown Menu */}
