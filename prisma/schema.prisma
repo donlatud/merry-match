@@ -20,6 +20,7 @@ model User {
 
   // Relationship: 1 User มีได้ 1 Profile
   profile       Profile?
+  complaints Complaint[]
 
   @@map("users") // ตั้งชื่อตารางในฐานข้อมูลเป็นตัวเล็ก
 }
@@ -214,4 +215,30 @@ enum PaymentTransactionStatus {
 enum SwipeStatus {
   LIKE
   DISLIKE
+}
+
+enum ComplaintStatus {
+  new
+  pending
+  resolved
+  cancelled
+}
+
+model Complaint {
+  id          String           @id @default(uuid())
+
+  userId      String           @map("user_id")
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  issue       String
+  description String
+
+  status      ComplaintStatus  @default(new)
+  adminNote   String?          @map("admin_note")
+
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  resolvedAt  DateTime?        @map("resolved_at")
+
+  @@map("complaints")
 }

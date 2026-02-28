@@ -10,7 +10,9 @@ const InputBar = forwardRef(
       disabled = false,
       className = "",
       rightIcon = "",
+      leftIcon = "",
       hideErrorIcon = false,
+      label,
       ...props
     },
     ref
@@ -19,6 +21,18 @@ const InputBar = forwardRef(
 
     return (
       <div className={`relative ${className}`}>
+        {label && (
+        <label className="block my-2 text-body2 font-medium text-black">
+          {label}
+        </label>
+      )}
+        {/* Left Icon */}
+        {leftIcon && (
+          <div className="absolute left-5 top-1/2 -translate-y-1/2 pointer-events-none">
+            {leftIcon}
+          </div>
+        )}
+
         <input
           ref={ref}
           type={type}
@@ -28,9 +42,9 @@ const InputBar = forwardRef(
             w-full
             rounded-lg
             border
-            px-4
             py-3
-            pr-10
+            ${leftIcon ? "pl-13" : "px-4"}
+            ${rightIcon || (error && !hideErrorIcon) ? "pr-10" : ""}
             border-gray-400
             outline-none
             focus:border-purple-500
@@ -40,34 +54,28 @@ const InputBar = forwardRef(
           `}
           {...props}
         />
+
+        {/* Error Icon */}
         {error && !hideErrorIcon && (
-        <Image
-          src="/merry_icon/icon-exclamation.svg"
-          className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-          alt=""
-          width={16}
-          height={16}
-        />
+          <Image
+            src="/merry_icon/icon-exclamation.svg"
+            className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+            alt=""
+            width={16}
+            height={16}
+          />
         )}
 
+        {/* Right Icon */}
         {rightIcon && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-        {rightIcon}
-      </div>
-)}
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            {rightIcon}
+          </div>
+        )}
       </div>
     );
   }
 );
 
 InputBar.displayName = "InputBar";
-
 export default InputBar;
-// example
-//const [email, setEmail] = useState("")
-      // <InputBar
-      //   value={email}
-      //   onChange={(e) => setEmail(e.target.value)}
-      //   placeholder="Enter email"
-      //   error={false} เงื่อนไขการ error true or false
-      // />

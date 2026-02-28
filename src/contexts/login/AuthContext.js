@@ -1,4 +1,4 @@
-import axios from "axios";
+import { supabase } from "@/providers/supabase.provider";
 import { fi, tr } from "date-fns/locale";
 import { useState, createContext, useEffect } from "react";
 import { useRouter } from "next/router";
@@ -6,79 +6,98 @@ import { useRouter } from "next/router";
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true); // เริ่มต้นเป็น true เพื่อตรวจสอบ token
   const router = useRouter();
 
   // ตรวจสอบ token เมื่อ app เริ่มต้น
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (token) {
-          // ตรวจสอบ token กับ server (optional)
-          // หรือแค่ดึงข้อมูล user จาก token
-          const userFromStorage = localStorage.getItem("user");
-          if (userFromStorage) {
-            setUser(JSON.parse(userFromStorage));
-          }
-        }
-      } catch (error) {
-        console.log("Error checking auth status:", error);
-        // ถ้า token หมดอายุหรือไม่ valid ให้ลบออก
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-      } finally {
-        setLoading(false);
+    const getSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session) {
+        setUser(session.user);
       }
+
+      setLoading(false);
     };
 
-    checkAuthStatus();
+    getSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-
-  const login = async (data) => {
+  const login = async ({ identifier, password }) => {
     setLoading(true);
-    // call API
-    try{
-        const response = await axios.post("/api/auth/login", data)
-        console.log(response.data.user)
-        setUser(response.data.user)
-        const token = response.data.access_token;
-        
-        // บันทึกทั้ง token และ user ใน localStorage
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(response.data.user));
-        
-        return true;
-    }
-    catch(error){
-        console.log(error);
+
+    try {
+      let emailToLogin = identifier;
+
+      // ถ้าไม่ใช่ email → หา email ก่อน
+      if (!identifier.includes("@")) {
+        const res = await fetch(`/api/user/by-username?u=${identifier}`);
+        const result = await res.json();
+
+        if (!res.ok || !result.email) {
+          return false;
+        }
+
+        emailToLogin = result.email;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: emailToLogin,
+        password,
+      });
+
+      if (error || !data.session) {
         return false;
-    }
-    finally{
-        setLoading(false);
+      }
+
+      // Supabase จะ persist session ให้อัตโนมัติ
+      setUser(data.user);
+
+      return true;
+    } catch (err) {
+      console.log(err)
+      console.error("Login error:", err);
+      return false;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    // ลบข้อมูล authentication ทั้งหมดจาก localStorage
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/login")
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
-    const isAuthenticated = Boolean(user);
+  const isAuthenticated = Boolean(user);
   return (
-    <AuthContext.Provider value={{  
+    <AuthContext.Provider
+      value={{
         user,
         role: user?.role || null,
         isAuthenticated,
         loading,
         login,
         logout,
-    }}>
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
