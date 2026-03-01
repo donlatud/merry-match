@@ -122,7 +122,7 @@ const [total, setTotal] = useState(0);
                       <tr
                         className="border-y bg-white hover:bg-gray-50 cursor-pointer transition"
                         key={item.id}
-                        onClick={() => router.push(`/complaint/${item.id}`)}
+                        onClick={() => router.push(`/admin/complaint/${item.id}`)}
                       >
                         {/* Username */}
                         <td className="py-2.5 px-10 text-body2">
