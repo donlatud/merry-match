@@ -32,7 +32,6 @@ const handleSubmit = async (e) => {
   try {
     const data = { identifier, password };
     const success = await login(data);
-    console.log("success:",success)
     if (!success) {
       const msg = "Invalid email/username or password";
       setError(msg);

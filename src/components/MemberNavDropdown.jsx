@@ -15,9 +15,9 @@ const MEMBER_NAV_MENU_ITEMS = [
     label: "Merry Membership",
   },
   {
-    href: "/compliant",
+    href: "/complaint",
     icon: "/merry_icon/icon-warning.svg",
-    label: "Compliant",
+    label: "Complaint",
   },
 ];
 

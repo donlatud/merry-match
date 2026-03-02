@@ -28,7 +28,7 @@ function AdminSideBar() {
   };
 
   return (
-    <aside className="max-w-[18%] w-[16.75vw] bg-white min-h-screen flex flex-col border-r gap-10">
+    <aside className=" max-w-[16.75vw] bg-white min-h-screen flex flex-col border-r gap-10">
       {/* Logo */}
       <div className="mb-10 p-6 flex flex-col  items-center">
         <Link href="/" className="font-bold text-2xl">

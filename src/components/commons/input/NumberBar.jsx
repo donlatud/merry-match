@@ -10,7 +10,7 @@ const NumberBar = ({
   max = Infinity,
   step = 1,
   placeholder = "Enter number",
-  className = "",
+  className,
   error= false,
 }) => {
   const increase = () => {
@@ -31,7 +31,7 @@ const NumberBar = ({
   };
 
   return (
-    <div className={`w-full ${className}`}>
+    <div className={`relative ${className}`}>
             {label && (
         <label className="block my-2 text-body2 font-medium text-black">
           {label}

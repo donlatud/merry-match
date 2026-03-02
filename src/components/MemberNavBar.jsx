@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import axios from "axios";
 import MemberNavDropdown from "@/components/MemberNavDropdown";
 import { useAuth } from "@/hooks/login/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { apiClient } from "@/lib/apiClient";
+
 
 export default function MemberNavBar({ onLogout }) {
   const { user } = useAuth();
@@ -14,33 +15,35 @@ export default function MemberNavBar({ onLogout }) {
   const profileDropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
 
-  useEffect(() => {
-    const fetchProfileImage = async () => {
-      try {
-        if (!user?.id) {
-          setProfileImageUrl(null);
-          return;
-        }
+useEffect(() => {
+  const controller = new AbortController();
 
-        const token =
-          typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        if (!token) {
-          setProfileImageUrl(null);
-          return;
-        }
+  const fetchProfileImage = async () => {
+    if (!user?.id) {
+      setProfileImageUrl(null);
+      return;
+    }
 
-        const response = await axios.get("/api/me/profile-image", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+    try {
+      const response = await apiClient.get("/me/profile-image", {
+        signal: controller.signal,
+      });
 
-        setProfileImageUrl(response.data.profile_image_url ?? null);
-      } catch {
+      setProfileImageUrl(response.data.profile_image_url ?? null);
+    } catch (error) {
+      if (error.name !== "CanceledError") {
+        console.error("fetchProfileImage error:", error);
         setProfileImageUrl(null);
       }
-    };
+    }
+  };
 
-    fetchProfileImage();
-  }, [user?.id]);
+  fetchProfileImage();
+
+  return () => {
+    controller.abort();
+  };
+}, [user?.id]);
 
   const userInitials = (user?.username || "MM").slice(0, 2).toUpperCase();
 

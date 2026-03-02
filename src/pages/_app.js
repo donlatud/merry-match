@@ -3,7 +3,6 @@ import { Nunito, Prompt } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/contexts/login/AuthContext";
 
-
 const nunito = Nunito({
   subsets: ["latin"],
   weight: ["500", "600", "700", "800", "900"],

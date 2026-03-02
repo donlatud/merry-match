@@ -1,11 +1,14 @@
-import AdminSideBar from "@/components/AdminSideBar"
+// pages/admin/index.js
 
-function AdminPage() {
-    return(
-        <>
-        <AdminSideBar />
-        </>
-    )
+export async function getServerSideProps() {
+  return {
+    redirect: {
+      destination: "/admin/merry-package",
+      permanent: false, // false = 307 redirect
+    },
+  };
 }
 
-export default AdminPage
+export default function AdminPage() {
+  return null; // ไม่ต้อง render อะไร
+}
