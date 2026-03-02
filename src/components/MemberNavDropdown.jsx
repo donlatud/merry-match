@@ -46,7 +46,7 @@ export default function MemberNavDropdown({
 
   if (variant === "mobile") {
     return (
-      <div className="fixed right-0 top-13 -z-1 flex w-[375px] h-[764px] flex-col gap-4 rounded-[4px] bg-utility-white px-4 py-6 shadow-[4px_4px_16px_0px_#00000014]">
+      <div className="fixed right-0 z-[100] flex w-full h-full flex-col gap-4 rounded-[4px] bg-utility-white px-4 py-6 shadow-[4px_4px_16px_0px_#00000014]">
         <Link
           href="/merry-package"
           className="flex items-center justify-center gap-[6px] rounded-[99px] bg-utility-linear px-6 py-[10px] cursor-pointer"

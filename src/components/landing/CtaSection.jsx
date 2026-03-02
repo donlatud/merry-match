@@ -45,7 +45,7 @@ export default function CtaSection() {
             className="w-auto min-w-0 text-body2! font-bold cursor-pointer"
             asChild
             >
-            <Link href={isAuthenticated ? "/matching-page" : "/login"}>
+            <Link href={isAuthenticated ? "/matchingpage" : "/login"}>
               Start Matching!
             </Link>
             </SecondaryButton>
