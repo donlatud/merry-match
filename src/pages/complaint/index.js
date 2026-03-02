@@ -19,7 +19,6 @@ function ComplaintPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(issue, desc);
     setError("");
 
     if (!issue || !desc) {

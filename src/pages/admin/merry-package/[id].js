@@ -20,8 +20,6 @@ export default function EditPackage() {
 
         const json = await res.json();
         setData(json);
-        console.log(json);
-        console.log(data);
       } catch (err) {
         console.error(err);
       } finally {

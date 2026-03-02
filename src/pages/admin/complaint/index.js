@@ -24,7 +24,7 @@ const [total, setTotal] = useState(0);
         console.error("Fetch complaint error:", err);
       }
     }
-    console.log("hit");
+    
     fetchData();
   }, []);
 
