@@ -7,6 +7,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  schemas  = ["public", "auth"]
 }
 
 // ตาราง Users สำหรับเก็บข้อมูลพื้นฐานและการเข้าสู่ระบบ
@@ -23,6 +24,7 @@ model User {
   complaints Complaint[]  
 
   @@map("users") // ตั้งชื่อตารางในฐานข้อมูลเป็นตัวเล็ก
+  @@schema("public")
 }
 
 // ตาราง Profile สำหรับเก็บข้อมูลส่วนตัวของผู้ใช้ (Dating Profile)
@@ -56,6 +58,7 @@ model Profile {
   subscription      UserSubscription?
 
   @@map("profiles")
+  @@schema("public")
 }
 
 // ตาราง Hobby (master) เก็บรายการ hobby ทั้งระบบ
@@ -66,6 +69,7 @@ model Hobby {
   profileHobbies ProfileHobby[]
 
   @@map("hobbies")
+  @@schema("public")
 }
 
 // ตาราง ProfileHobby เชื่อม Profile กับ Hobby (profile_id + hobby_id เป็น primary key)
@@ -78,6 +82,7 @@ model ProfileHobby {
 
   @@id([profile_id, hobby_id])
   @@map("profile_hobbies")
+  @@schema("public")
 }
 
 // ตาราง ProfileImage สำหรับเก็บ URL รูปภาพจาก Supabase Storage
@@ -90,12 +95,15 @@ model ProfileImage {
   profile    Profile  @relation(fields: [profile_id], references: [id], onDelete: Cascade)
 
   @@map("profile_images")
+  @@schema("public")
 }
 
 // กำหนดประเภท Role
 enum Role {
   USER
   ADMIN
+
+  @@schema("public")
 }
 
 // ตาราง Test สำหรับทดสอบ API (optional)
@@ -103,6 +111,7 @@ model Test {
   id   Int    @id @default(autoincrement())
   name String
   @@map("test")
+  @@schema("public")
 }
 
 // 4. ตาราง Swipes สำหรับระบบ Match (ปัดซ้าย/ปัดขวา)
@@ -118,6 +127,7 @@ model Swipe {
   receiver      Profile      @relation("ReceivedSwipes", fields: [receiver_id], references: [id], onDelete: Cascade)
 
   @@map("swipes")
+  @@schema("public")
 }
 
 // 5. ตาราง Packages ข้อมูลราคาและสิทธิพิเศษ (Master Data)
@@ -139,6 +149,7 @@ model Package {
   details           DetailPackage[]
 
   @@map("packages")
+  @@schema("public")
 }
 
 // 6. ตาราง UserSubscription เก็บประวัติการซื้อแพ็กเกจของผู้ใช้
@@ -158,6 +169,7 @@ model UserSubscription {
   transactions          PaymentTransaction[]
 
   @@map("user_subscriptions")
+  @@schema("public")
 }
 
 // 7. ตาราง PaymentTransaction เก็บแต่ละครั้งที่ charge (audit + webhook)
@@ -175,6 +187,7 @@ model PaymentTransaction {
   user_subscription      UserSubscription          @relation(fields: [user_subscription_id], references: [id], onDelete: Cascade)
 
   @@map("payment_transactions")
+  @@schema("public")
 }
 
 model DetailPackage {
@@ -192,6 +205,7 @@ model DetailPackage {
   @@index([packageId])
 
   @@map("package_details")
+  @@schema("public")
 }
 
 // Enum สำหรับสถานะ subscription (Merry Package)
@@ -201,6 +215,8 @@ enum SubscriptionStatus {
   EXPIRED   // หมดอายุ
   CANCELLED // ยกเลิก
   FAILED    // ชำระไม่สำเร็จ
+
+  @@schema("public")
 }
 
 // Enum สำหรับสถานะการชำระเงิน (แต่ละ transaction)
@@ -209,12 +225,16 @@ enum PaymentTransactionStatus {
   PAID
   FAILED
   REFUNDED
+
+  @@schema("public")
 }
 
 // Enum สำหรับสถานะการปัด
 enum SwipeStatus {
   LIKE
   DISLIKE
+
+  @@schema("public")
 }
 
 
@@ -223,6 +243,8 @@ enum ComplaintStatus {
   pending
   resolved
   cancelled
+
+  @@schema("public")
 }
 
 model Complaint {
@@ -240,6 +262,8 @@ model Complaint {
   createdAt   DateTime         @default(now()) @map("created_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
   resolvedAt  DateTime?        @map("resolved_at")
+  cancelledAt DateTime?        @map("cancelled_at")
 
   @@map("complaints")
+  @@schema("public")
 }
