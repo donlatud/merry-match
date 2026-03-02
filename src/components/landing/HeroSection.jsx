@@ -108,7 +108,7 @@ export default function HeroSection() {
             className="w-auto min-w-0 text-body2! font-bold cursor-pointer active:duration-0 active:[animation-duration:0ms]"
             asChild
           >
-            <Link href={isAuthenticated ? "/matching-page" : "/login"}>
+            <Link href={isAuthenticated ? "/matchingpage" : "/login"}>
               Start Matching!
             </Link>
           </PrimaryButton>
@@ -149,7 +149,7 @@ export default function HeroSection() {
           className="w-auto min-w-0 text-body2! font-bold cursor-pointer"
           asChild
         >
-          <Link href={isAuthenticated ? "/matching-page" : "/login"}>
+          <Link href={isAuthenticated ? "/matchingpage" : "/login"}>
             Start Matching!
           </Link>
         </PrimaryButton>

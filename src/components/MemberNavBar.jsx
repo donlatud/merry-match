@@ -129,7 +129,7 @@ export default function MemberNavBar({ onLogout }) {
       {/* Desktop: Start Matching + Membership + Notification + Profile */}
       <div className="hidden lg:flex items-center gap-11">
         <Link
-          href="/matching-page"
+          href="/matchingpage"
           className="text-body2 text-purple-800 font-bold hover:underline cursor-pointer"
         >
           Start Matching!

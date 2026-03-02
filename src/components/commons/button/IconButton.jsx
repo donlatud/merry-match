@@ -80,8 +80,9 @@ export function ButtonMerry({ className, onClick, ...props }) {
         onClick={handleClick}
         className={cn(
           iconButtonWhiteClasses,
+          "transition-all duration-500 ease-in-out",
           pressed && "bg-red-500 hover:bg-red-500 shadow-(--shadow-button)",
-          className
+          className,
         )}
         {...props}
       >
@@ -91,20 +92,70 @@ export function ButtonMerry({ className, onClick, ...props }) {
           width={24}
           height={24}
           className={cn(
-            "size-6 shrink-0 object-contain",
-            pressed && "brightness-0 invert"
+            "size-6 shrink-0 object-contain transition-all duration-500",
+            pressed && "brightness-0 invert",
           )}
         />
       </Button>
       <span
         className={cn(
           "pointer-events-none absolute left-1/2 top-full -translate-x-1/2 mt-1 rounded px-2 py-0.5 bg-gray-600 text-white text-sm whitespace-nowrap transition-opacity duration-200",
-          pressed ? "opacity-0" : "opacity-0 group-hover:opacity-100"
+          pressed ? "opacity-0" : "opacity-0 group-hover:opacity-100",
         )}
         role="tooltip"
         aria-hidden
       >
         Merry
+      </span>
+    </span>
+  );
+}
+
+export function ButtonPass({ className, onClick, ...props }) {
+  const [pressed, setPressed] = useState(false);
+
+  const handleClick = (e) => {
+    setPressed((prev) => !prev);
+    onClick?.(e);
+  };
+
+  return (
+    <span className="relative inline-block group cursor-pointer">
+      <Button
+        variant="ghost"
+        type="button"
+        title="Pass"
+        aria-label="Pass"
+        aria-pressed={pressed}
+        onClick={handleClick}
+        className={cn(
+          iconButtonWhiteClasses,
+          "transition-all duration-500 ease-in-out",
+          pressed && "bg-gray-200 hover:bg-gray-200 shadow-(--shadow-button)",
+          className,
+        )}
+        {...props}
+      >
+        <Image
+          src="/merry_icon/icon-merry-close.svg"
+          alt=""
+          width={24}
+          height={24}
+          className={cn(
+            "size-6 shrink-0 object-contain transition-all duration-500",
+            pressed && "opacity-60",
+          )}
+        />
+      </Button>
+      <span
+        className={cn(
+          "pointer-events-none absolute left-1/2 top-full -translate-x-1/2 mt-1 rounded px-2 py-0.5 bg-gray-600 text-white text-sm whitespace-nowrap transition-opacity duration-200",
+          pressed ? "opacity-0" : "opacity-0 group-hover:opacity-100",
+        )}
+        role="tooltip"
+        aria-hidden
+      >
+        Pass
       </span>
     </span>
   );
