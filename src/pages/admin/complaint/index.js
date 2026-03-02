@@ -130,8 +130,8 @@ const [total, setTotal] = useState(0);
                         </td>
                         {/* Issue */}
                         <td className="px-4 py-8 text-body2">
-                          {item.issue.length > 100
-                            ? item.issue.slice(0, 22) + "..."
+                          {item.issue.length > 10
+                            ? item.issue.slice(0, 13) + "..."
                             : item.issue}
                         </td>
                         {/* Description */}

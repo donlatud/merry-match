@@ -16,23 +16,33 @@ export default function MemberNavBar({ onLogout }) {
   const mobileMenuRef = useRef(null);
 
 useEffect(() => {
-  const fetchProfileImage = async () => {
-    try {
-      if (!user?.id) {
-        setProfileImageUrl(null);
-        return;
-      }
+  const controller = new AbortController();
 
-      const response = await apiClient.get("/me/profile-image");
+  const fetchProfileImage = async () => {
+    if (!user?.id) {
+      setProfileImageUrl(null);
+      return;
+    }
+
+    try {
+      const response = await apiClient.get("/me/profile-image", {
+        signal: controller.signal,
+      });
 
       setProfileImageUrl(response.data.profile_image_url ?? null);
     } catch (error) {
-      console.error("fetchProfileImage error:", error);
-      setProfileImageUrl(null);
+      if (error.name !== "CanceledError") {
+        console.error("fetchProfileImage error:", error);
+        setProfileImageUrl(null);
+      }
     }
   };
 
   fetchProfileImage();
+
+  return () => {
+    controller.abort();
+  };
 }, [user?.id]);
 
   const userInitials = (user?.username || "MM").slice(0, 2).toUpperCase();
