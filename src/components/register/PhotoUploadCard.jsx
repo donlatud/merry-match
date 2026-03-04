@@ -5,6 +5,7 @@ export const PhotoUploadCard = ({
   slotNumber,
   hasImage = false,
   file = null,
+  imageUrl = null,
   onRemove,
   onUpload,
 }) => {
@@ -20,7 +21,9 @@ export const PhotoUploadCard = ({
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  if (hasImage && previewUrl) {
+  const displayUrl = previewUrl ?? (typeof imageUrl === "string" && imageUrl ? imageUrl : null);
+
+  if (hasImage && displayUrl) {
     return (
       <div
         role="listitem"
@@ -28,7 +31,7 @@ export const PhotoUploadCard = ({
       >
         <div className="absolute inset-0 overflow-hidden rounded-xl bg-gray-300">
           <img
-            src={previewUrl}
+            src={displayUrl}
             alt={`Profile photo ${slotNumber}`}
             className="h-full w-full object-cover"
           />
@@ -45,7 +48,7 @@ export const PhotoUploadCard = ({
     );
   }
 
-  if (hasImage && !previewUrl) {
+  if (hasImage && !displayUrl) {
     return (
       <div
         role="listitem"

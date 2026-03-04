@@ -8,10 +8,13 @@ import { cn } from "@/lib/utils";
 const iconButtonWhiteClasses =
   "size-12 rounded-2xl bg-white shadow-[var(--shadow-button)] p-0 inline-flex items-center justify-center hover:bg-white cursor-pointer";
 
+const iconGray700Classes = "brightness-0 saturate(100%) opacity-70";
 const iconButtonTooltipClasses =
   "pointer-events-none absolute left-1/2 top-full -translate-x-1/2 mt-1 rounded px-2 py-0.5 bg-gray-600 text-white text-sm whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100";
 
-export function ButtonGoToChat({ className, ...props }) {
+
+
+export function ButtonGoToChat({ className, iconClassName, ...props }) {
   return (
     <span className="relative inline-block group cursor-pointer">
       <Button
@@ -26,7 +29,7 @@ export function ButtonGoToChat({ className, ...props }) {
           alt=""
           width={24}
           height={24}
-          className="size-6 shrink-0"
+          className={cn("size-6 shrink-0", iconClassName)}
         />
       </Button>
       <span className={iconButtonTooltipClasses} role="tooltip" aria-hidden>
@@ -36,7 +39,7 @@ export function ButtonGoToChat({ className, ...props }) {
   );
 }
 
-export function ButtonSeeProfile({ className, ...props }) {
+export function ButtonSeeProfile({ className, iconClassName, ...props }) {
   return (
     <span className="relative inline-block group cursor-pointer">
       <Button
@@ -51,7 +54,7 @@ export function ButtonSeeProfile({ className, ...props }) {
           alt=""
           width={24}
           height={24}
-          className="size-6 shrink-0"
+          className={cn("size-6 shrink-0", iconClassName)}
         />
       </Button>
       <span className={iconButtonTooltipClasses} role="tooltip" aria-hidden>

@@ -12,7 +12,8 @@ const InputBar = forwardRef(
       rightIcon = "",
       leftIcon = "",
       hideErrorIcon = false,
-      label,
+      inputClassName = "",
+      label,    
       ...props
     },
     ref
@@ -51,6 +52,7 @@ const InputBar = forwardRef(
             placeholder:text-gray-600
             ${error ? "border-utility-red" : ""}
             ${disabled ? disabledStyle : ""}
+            ${inputClassName}
           `}
           {...props}
         />
