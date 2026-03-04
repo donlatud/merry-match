@@ -13,6 +13,7 @@ const InputBar = forwardRef(
       leftIcon = "",
       hideErrorIcon = false,
       inputClassName = "",
+      label,    
       ...props
     },
     ref
