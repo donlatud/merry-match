@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { ButtonMerry, ButtonPass } from "../commons/button/IconButton";
 import { PaginationWrapper } from "../ui/PaginationWrapper";
+import { Loading } from "../commons/Loading/Loading";
 
 /**
  * ProfilePopup – Modal แสดงโปรไฟล์ (รูป, ชื่อ, รายละเอียด, ปุ่ม Like/Pass)
@@ -33,19 +34,25 @@ export function ProfilePopup({
   leftButton,
   rightButton,
 }) {
-  // ---------- State: ข้อมูลโปรไฟล์, สถานะโหลด, ข้อความ error ----------
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const images = user?.images ?? [];
 
-  // ---------- State: index รูปปัจจุบัน, แสดงชื่อเต็มหรือย่อ, ว่าเป็นจอ lg หรือไม่ ----------
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showFullName, setShowFullName] = useState(false);
   const [isLg, setIsLg] = useState(false);
 
-  // ---------- ตรวจจับ breakpoint lg (1024px) สำหรับการย่อชื่อ ----------
+  // ล้างข้อมูลเก่าทันทีเมื่อ id เปลี่ยน — ไม่ให้ flash ข้อมูลเก่า
+  useEffect(() => {
+    setUser(null);
+    setError(null);
+    setLoading(false);
+    setCurrentIndex(0);
+    setShowFullName(false);
+  }, [id]);
+
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 1024px)");
     const handler = (e) => setIsLg(e.matches);
@@ -54,9 +61,21 @@ export function ProfilePopup({
     return () => mql.removeEventListener("change", handler);
   }, []);
 
-  // ---------- ดึงข้อมูลโปรไฟล์ตาม id จาก API (ไม่แนบ token) ----------
+  // ---------- เตรียมโหลดรูปทุกใบล่วงหน้าเมื่อมี user/รูปแล้ว ----------
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const urls = user?.images ?? [];
+    urls.forEach((src) => {
+      if (!src || typeof src !== "string") return;
+      const img = new window.Image();
+      img.src = src;
+    });
+  }, [user?.images]);
+
   useEffect(() => {
     if (!open || !id) return;
+
+    let cancelled = false;
 
     const fetchProfile = async () => {
       try {
@@ -64,6 +83,8 @@ export function ProfilePopup({
         setError(null);
         const res = await axios.get(`/api/profile/${id}`);
         const data = res.data;
+
+        if (cancelled) return;
 
         if (!data) {
           setError("ไม่พบข้อมูลโปรไฟล์");
@@ -76,17 +97,19 @@ export function ProfilePopup({
           images: data.images ?? [],
         });
       } catch (err) {
+        if (cancelled) return;
         console.error("Failed to load profile in popup:", err);
         setError(
           err.response?.data?.error || err.message || "โหลดโปรไฟล์ไม่สำเร็จ"
         );
         setUser(null);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchProfile();
+    return () => { cancelled = true; };
   }, [open, id]);
 
   // ---------- รูปที่แสดง: เลือกจาก images ตาม currentIndex ----------
@@ -127,15 +150,21 @@ export function ProfilePopup({
   if (!user) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20">
-        <div className="rounded-xl bg-white px-6 py-4 text-body2 shadow">
-          {error ? (
-            <span className="text-red-600">{error}</span>
-          ) : loading ? (
-            "กำลังโหลดโปรไฟล์..."
-          ) : (
-            "ไม่พบข้อมูลโปรไฟล์"
-          )}
-        </div>
+        {error ? (
+          <div className="rounded-3xl bg-white px-6 py-6 shadow-lg max-w-sm w-full mx-4 flex flex-col items-center justify-center">
+            <span className="text-body2 text-red-600">{error}</span>
+          </div>
+        ) : loading ? (
+          <Loading
+            bgClass="bg-white rounded-3xl shadow-lg"
+            className="max-w-sm w-full mx-4 px-6 py-6"
+            colorClass="text-purple-700"
+          />
+        ) : (
+          <div className="rounded-3xl bg-white px-6 py-6 shadow-lg max-w-sm w-full mx-4 flex flex-col items-center justify-center">
+            <span className="text-body2 text-gray-700">ไม่พบข้อมูลโปรไฟล์</span>
+          </div>
+        )}
       </div>
     );
   }
