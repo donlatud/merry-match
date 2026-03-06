@@ -1,16 +1,24 @@
 import NavBar from "@/components/NavBar";
-import React, { useState, useMemo } from "react";
-import { mockProfiles } from "@/components/commons/mockProfile";
+import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/router";
+import axios from "axios";
+import { supabase } from "@/providers/supabase.provider";
 import InputBar from "@/components/commons/input/InputBar";
 import DatePicker from "@/components/commons/input/DatePicker";
 import DropdownBar from "@/components/commons/input/DropDownBar";
 import MultiSelect from "@/components/commons/input/MultiSelect";
 import { PrimaryButton } from "@/components/commons/button/PrimaryButton";
 import { SecondaryButton } from "@/components/commons/button/SecondaryButton";
-import PhotoUpload from "@/components/commons/input/PhotoUpload";
+import { PhotoUploadCard } from "@/components/register/PhotoUploadCard";
 import Footer from "@/components/Footer";
+import { ProfilePopup } from "@/components/profilePopup/ProfilePopup";
+import { merryToast } from "@/components/commons/toast/MerryToast";
+import { CheckCircleIcon } from "@heroicons/react/24/solid";
+import { PROFILE_IMAGES_BUCKET } from "@/lib/storageHelpers";
+import { Loading } from "@/components/commons/Loading/Loading";
 
-const PROFILE_PHOTO_SLOTS = 5; // จำนวนช่องรูป (มือถือ grid 2 คอลัมน์, เดสก์ท็อปแถวเดียว)
+const PROFILE_PHOTO_SLOTS = 5;
+const DEFAULT_PROFILE_ID = "2d552fcd-a0be-47fb-b325-9b2b3fc435b8";
 
 const LOCATION_OPTIONS = ["Bangkok, Thailand", "Chiang Mai, Thailand", "Phuket, Thailand", "Other"];
 const CITY_OPTIONS = ["Bangkok", "Chiang Mai", "Phuket", "Krabi", "Pattaya", "Other"];
@@ -21,39 +29,178 @@ const MEETING_INTEREST_OPTIONS = ["Friends", "Relationship", "Networking", "Dati
 const HOBBIES_OPTIONS = ["E-sport", "Travel", "Movies", "Fitness", "Photography", "Hiking", "Cafe hopping", "Tech", "Business", "Gaming", "Music", "Reading"];
 
 export default function ProfilePage() {
-  const user = mockProfiles[0];
-  const initialUrls = user?.images ?? [];
-  const initialPhotos = useMemo(
-    () => initialUrls.map((url) => ({ url })),
-    [initialUrls.length]
-  );
+  const router = useRouter();
+  const profileId = router.query.id ?? DEFAULT_PROFILE_ID;
 
-  const [name, setName] = useState(user?.name ?? "");
-  const [dateOfBirth, setDateOfBirth] = useState(
-    user?.dateOfBirth ? new Date(user.dateOfBirth) : undefined
-  );
-  const [location, setLocation] = useState(user?.location ?? "");
-  const [city, setCity] = useState(user?.city ?? "");
-  const [username, setUsername] = useState(user?.username ?? "");
-  const [email, setEmail] = useState(user?.email ?? "");
-  const [sexualIdentity, setSexualIdentity] = useState(user?.sexualIdentity ?? "");
-  const [sexualPreference, setSexualPreference] = useState(user?.sexualPreference ?? "");
-  const [racialPreference, setRacialPreference] = useState(user?.racialPreference ?? "");
-  const [meetingInterest, setMeetingInterest] = useState(user?.meetingInterest ?? "");
-  const [interests, setInterests] = useState(user?.interests ?? []);
-  const [about, setAbout] = useState(user?.about ?? "");
-  const [photos, setPhotos] = useState(initialPhotos);
-  console.log(name);
-  
+  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState(undefined);
+  const [location, setLocation] = useState("");
+  const [city, setCity] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [sexualIdentity, setSexualIdentity] = useState("");
+  const [sexualPreference, setSexualPreference] = useState("");
+  const [racialPreference, setRacialPreference] = useState("");
+  const [meetingInterest, setMeetingInterest] = useState("");
+  const [interests, setInterests] = useState([]);
+  const [about, setAbout] = useState("");
+  const [photos, setPhotos] = useState(() => Array(PROFILE_PHOTO_SLOTS).fill(null));
+  const [profileError, setProfileError] = useState(null);
+  const [updating, setUpdating] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const fileInputRef = useRef(null);
+  const pendingPhotoSlotRef = useRef(null);
+
+  useEffect(() => {
+    if (!profileId) return;
+
+    setProfileError(null);
+    const fetchProfile = async () => {
+      try {
+        const res = await axios.get(`/api/profile/${profileId}`);
+        const data = res.data;
+
+        setName(data.name ?? "");
+        setDateOfBirth(data.birthday ? new Date(data.birthday) : undefined);
+        setLocation(data.location ?? "");
+        setCity(data.city ?? "");
+        setUsername(data.username ?? "");
+        setEmail(data.email ?? "");
+        setSexualIdentity(data.sexualIdentity ?? "");
+        setSexualPreference(data.sexualPreference ?? "");
+        setRacialPreference(data.racialPreference ?? "");
+        setMeetingInterest(data.meetingInterest ?? "");
+        setAbout(data.about ?? "");
+        setInterests(data.interests ?? []);
+        const urls = (data.images ?? []).slice(0, PROFILE_PHOTO_SLOTS);
+        const padded = [...urls, ...Array(PROFILE_PHOTO_SLOTS).fill(null)].slice(0, PROFILE_PHOTO_SLOTS);
+        setPhotos(padded);
+      } catch (err) {
+        if (err.response?.status === 404) {
+          setProfileError("ไม่พบโปรไฟล์นี้");
+        } else {
+          setProfileError(err.response?.data?.error || err.message || "โหลดโปรไฟล์ไม่สำเร็จ");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [profileId]);
+
+  const handlePhotoUploadClick = (slotIndex) => {
+    pendingPhotoSlotRef.current = slotIndex;
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file == null) return;
+    const index = pendingPhotoSlotRef.current;
+    if (index == null || index < 0 || index >= PROFILE_PHOTO_SLOTS) return;
+    setPhotos((prev) => {
+      const next = [...prev];
+      while (next.length < PROFILE_PHOTO_SLOTS) next.push(null);
+      next[index] = file;
+      return next;
+    });
+    e.target.value = "";
+    pendingPhotoSlotRef.current = null;
+  };
+
+  const uploadFileToStorage = async (file) => {
+    const ext = file.name.split(".").pop();
+    const filePath = `${profileId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage
+      .from(PROFILE_IMAGES_BUCKET)
+      .upload(filePath, file, { upsert: true });
+    if (error) throw new Error(`Upload failed: ${error.message}`);
+    const { data } = supabase.storage.from(PROFILE_IMAGES_BUCKET).getPublicUrl(filePath);
+    return data.publicUrl;
+  };
+
+  const handleUpdateProfile = async () => {
+    try {
+      setUpdating(true);
+      setProfileError(null);
+
+      const imageUrls = [];
+      for (const photo of photos) {
+        if (photo instanceof File) {
+          const url = await uploadFileToStorage(photo);
+          imageUrls.push(url);
+        } else if (typeof photo === "string" && photo) {
+          imageUrls.push(photo);
+        }
+      }
+
+      await axios.put(`/api/profile/${profileId}`, {
+        name,
+        birthday: dateOfBirth ? dateOfBirth.toISOString() : null,
+        location,
+        city,
+        username,
+        email,
+        sexualIdentity,
+        sexualPreference,
+        racialPreference,
+        meetingInterest,
+        about,
+        interests,
+        images: imageUrls,
+      });
+      merryToast.success(
+        "Profile updated",
+        "อัปเดตโปรไฟล์สำเร็จ!",
+        <CheckCircleIcon className="size-10! text-green-500" />,
+      );
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || "อัปเดตไม่สำเร็จ";
+      setProfileError(msg);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handlePhotoRemove = (slotIndex) => {
+    setPhotos((prev) => {
+      const next = [...prev];
+      while (next.length < PROFILE_PHOTO_SLOTS) next.push(null);
+      next[slotIndex] = null;
+      return next;
+    });
+  };
+
+  if (loading) {
+    return (
+      <>
+        <NavBar />
+        <div className="flex justify-center items-center min-h-[60vh] bg-utility-bg-main">
+          <Loading />
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
   return (
     <>
-
-      <div className="lg:flex lg:justify-center">
+      {profileError && (
+        <div className="mx-4 mt-4 p-4 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 text-body2" role="alert">
+          {profileError}
+        </div>
+      )}
+      <div className="lg:justify-center">
+        <NavBar />
+        {!previewOpen && (
         <div className="lg:flex lg:justify-center ">
-          <div className="py-10 lg:pt-20 lg:flex lg:w-[931px]  lg:justify-center  px-4 flex flex-col gap-10 ">
-            <NavBar />
-            <header className="pt-[45px]">
-              <div className="">
+        
+          <div className="py-10  lg:flex lg:w-[931px]  lg:justify-center  px-4 flex flex-col gap-10 ">
+            
+            <header className="">
+              <div>
                 <span className="text-body2 font-semibold text-beige-700 tracking-widest">
                   PROFILE
                 </span>
@@ -68,22 +215,21 @@ export default function ProfilePage() {
                     <SecondaryButton
                       type="button"
                       className="w-[156px] font-semibold py-4 "
+                      onClick={() => setPreviewOpen(true)}
                     >
                       Preview Profile
                     </SecondaryButton>
                     <PrimaryButton
                       type="button"
                       className="w-[156px]  font-semibold py-4 "
+                      onClick={handleUpdateProfile}
+                      disabled={updating}
                     >
-                      Update Profile
+                      {updating ? "Updating..." : "Update Profile"}
                     </PrimaryButton>
                   </div>
                 </div>
-
-
               </div>
-              {/* <SecondaryButton >Preview Profile</SecondaryButton>
-        <PrimaryButton>Update Profile</PrimaryButton> */}
             </header>
             <article className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <h1 className="text-headline4 text-gray-900 font-bold col-span-1 md:col-span-2">Basic Information</h1>
@@ -93,7 +239,7 @@ export default function ProfilePage() {
               </div>
               <div className="gap-1">
                 <h1 className="text-body2">Date of birth</h1>
-                <DatePicker value={dateOfBirth} onChange={setDateOfBirth} placeholder="Pick a date" />
+                <DatePicker value={dateOfBirth} onChange={setDateOfBirth} label="" placeholder="" />
               </div>
               <div className="gap-1">
                 <h1 className="text-body2">Location</h1>
@@ -103,16 +249,21 @@ export default function ProfilePage() {
                 <h1 className="text-body2">City</h1>
                 <DropdownBar options={CITY_OPTIONS} value={city} onChange={setCity} placeholder="Select city" />
               </div>
-
               <div className="gap-1">
                 <h1 className="text-body2">Username</h1>
                 <InputBar value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter username" />
               </div>
               <div className="gap-1">
-                <h1 className="text-body2">Email</h1>
-                <InputBar type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter email" />
+                <h1 className="text-body2 text-gray-600">Email</h1>
+                <InputBar
+                  type="email"
+                  value={email}
+                  readOnly
+                  placeholder="Enter email"
+                  className="cursor-not-allowed"
+                  inputClassName="bg-gray-200 text-gray-600 cursor-not-allowed border-gray-300"
+                />
               </div>
-
             </article>
             <article className="flex flex-col gap-6">
 
@@ -146,31 +297,62 @@ export default function ProfilePage() {
                 <InputBar value={about} onChange={(e) => setAbout(e.target.value)} placeholder="Tell us about you" maxLength={150} />
               </div>
             </article>
-            {/* ส่วน Profile pictures ตาม photo container.svg + photo.svg + photo (1).svg */}
-            <article className="flex flex-col gap-6">
-              <div>
-                <h2 className="text-headline4 text-purple-500 font-bold">Profile pictures</h2>
-                <p className="text-gray-800 text-body2 mt-1">Upload at least 2 photos</p>
-              </div>
-              <PhotoUpload
-                className="w-[167px] h-[167px]"
-                value={photos}
-                onChange={setPhotos}
-                maxSlots={PROFILE_PHOTO_SLOTS}
+            {/* Profile pictures – upload grid (StepThreeUpload style) */}
+            <article className="flex flex-col gap-6" aria-labelledby="profile-pictures-heading">
+              <input
+                ref={fileInputRef}
+                type="file"
                 accept="image/*"
+                className="sr-only"
+                aria-hidden
+                onChange={handlePhotoFileChange}
               />
+              <header className="flex flex-col gap-1">
+                <h2 id="profile-pictures-heading" className="text-headline4 text-purple-500 font-bold">
+                  Profile pictures
+                </h2>
+                <p className="text-gray-800 text-body2 mt-1">Upload at least 2 photos</p>
+              </header>
+              <div
+                className="grid grid-cols-2 gap-2 lg:grid-cols-5 lg:gap-6"
+                role="list"
+                aria-label="Profile photo slots"
+              >
+                {Array.from({ length: PROFILE_PHOTO_SLOTS }, (_, i) => {
+                  const value = photos[i] ?? null;
+                  const hasImage = value != null;
+                  const isFile = value instanceof File;
+                  const imageUrl = typeof value === "string" ? value : null;
+                  return (
+                    <PhotoUploadCard
+                      key={i}
+                      slotNumber={i + 1}
+                      hasImage={hasImage}
+                      file={isFile ? value : null}
+                      imageUrl={imageUrl}
+                      onRemove={() => handlePhotoRemove(i)}
+                      onUpload={() => handlePhotoUploadClick(i)}
+                      className="z-10"
+                    />
+                  );
+                })}
+              </div>
+
               <div className="flex gap-6 justify-center mt-6 lg:hidden">
                 <SecondaryButton
                   type="button"
                   className="w-[156px] font-semibold py-4 "
+                  onClick={() => setPreviewOpen(true)}
                 >
                   Preview Profile
                 </SecondaryButton>
                 <PrimaryButton
                   type="button"
                   className="w-[156px]  font-semibold  py-4 "
+                  onClick={handleUpdateProfile}
+                  disabled={updating}
                 >
-                  Update Profile
+                  {updating ? "Updating..." : "Update Profile"}
                 </PrimaryButton>
               </div>
             </article>
@@ -178,8 +360,17 @@ export default function ProfilePage() {
           </div>
 
         </div>
+        )}
 
       </div>
+      <ProfilePopup
+        className="z-50"
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        id={profileId}
+        leftButton={null}
+        rightButton={null}
+      />
       <Footer />
     </>
   );

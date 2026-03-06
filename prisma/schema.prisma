@@ -79,6 +79,50 @@ model ProfileHobby {
   @@schema("public")
 }
 
+// ตาราง Hobby (master) เก็บรายการ hobby ทั้งระบบ
+model Hobby {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  profileHobbies ProfileHobby[]
+
+  @@map("hobbies")
+}
+
+// ตาราง ProfileHobby เชื่อม Profile กับ Hobby (profile_id + hobby_id เป็น primary key)
+model ProfileHobby {
+  profile_id String
+  hobby_id   Int
+
+  profile Profile @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  hobby   Hobby   @relation(fields: [hobby_id], references: [id], onDelete: Cascade)
+
+  @@id([profile_id, hobby_id])
+  @@map("profile_hobbies")
+}
+
+// ตาราง Hobby (master) เก็บรายการ hobby ทั้งระบบ
+model Hobby {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  profileHobbies ProfileHobby[]
+
+  @@map("hobbies")
+}
+
+// ตาราง ProfileHobby เชื่อม Profile กับ Hobby (profile_id + hobby_id เป็น primary key)
+model ProfileHobby {
+  profile_id String
+  hobby_id   Int
+
+  profile Profile @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  hobby   Hobby   @relation(fields: [hobby_id], references: [id], onDelete: Cascade)
+
+  @@id([profile_id, hobby_id])
+  @@map("profile_hobbies")
+}
+
 model ProfileImage {
   id         Int     @id @default(autoincrement())
   profile_id String
