@@ -10,57 +10,45 @@ datasource db {
   schemas  = ["public"]
 }
 
-// ตาราง Users สำหรับเก็บข้อมูลพื้นฐานและการเข้าสู่ระบบ
 model User {
-  id            String    @id @default(uuid()) @db.Uuid
-  email         String    @unique
-  username      String    @unique
-  role          Role      @default(USER)
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+  id         String    @id @default(uuid()) @db.Uuid  // uuid
+  email      String    @unique
+  username   String    @unique
+  role       Role      @default(USER)
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
 
-  // Relationship: 1 User มีได้ 1 Profile
-  profile       Profile?
-  complaints Complaint[]  
+  profile    Profile?
+  complaints Complaint[]
 
-  @@map("users") // ตั้งชื่อตารางในฐานข้อมูลเป็นตัวเล็ก
+  @@map("users")
   @@schema("public")
 }
 
-// ตาราง Profile สำหรับเก็บข้อมูลส่วนตัวของผู้ใช้ (Dating Profile)
-// Map กับฟอร์ม register: full_name←name, birthday←date, gender←sexualIdentity (step2)
 model Profile {
-  id                String    @id @default(uuid())
-  user_id           String    @unique @db.Uuid
+  id                String   @id @default(uuid())      // text
+  user_id           String   @unique @db.Uuid           // uuid
   full_name         String
   birthday          DateTime
   location          String
   city              String
-  gender            String    // ฟอร์ม: sexual_identity (Male, Female, Non-binary, Other)
+  gender            String
   sexual_preference String
   racial_preference String
   meeting_interest  String
-  bio               String?   @db.Text
+  bio               String?  @db.Text
 
-  // Relationship: เชื่อมกลับไปที่ User
-  user              User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  
-  // Relationship: 1 Profile มีได้หลาย hobbies (แยกตาราง profile_hobbies)
+  user              User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
   profileHobbies    ProfileHobby[]
-  // Relationship: 1 Profile มีได้หลายรูปภาพ
   images            ProfileImage[]
-
-  // Swipe relations
-  requestedSwipes   Swipe[]   @relation("RequestedSwipes")
-  receivedSwipes    Swipe[]   @relation("ReceivedSwipes")
-
-  // Subscription (1 Profile มีได้ 1 subscription ที่ active)
+  requestedSwipes   Swipe[]          @relation("RequestedSwipes")
+  receivedSwipes    Swipe[]          @relation("ReceivedSwipes")
   subscription      UserSubscription?
 
-   // Chat relations — เพิ่มตรงนี้
-  chatRooms1   ChatRoom[]  @relation("ChatRoomProfile1")
-  chatRooms2   ChatRoom[]  @relation("ChatRoomProfile2")
-  sentMessages Message[]   @relation("SentMessages")
+  // Chat relations
+  chatRooms1        ChatRoom[]       @relation("ChatRoomProfile1")
+  chatRooms2        ChatRoom[]       @relation("ChatRoomProfile2")
+  sentMessages      Message[]        @relation("SentMessages")
 
   // Notification relations
   receivedNotifications Notification[] @relation("NotificationRecipient")
@@ -70,18 +58,15 @@ model Profile {
   @@schema("public")
 }
 
-// ตาราง Hobby (master) เก็บรายการ hobby ทั้งระบบ
 model Hobby {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-
+  id             Int            @id @default(autoincrement())
+  name           String         @unique
   profileHobbies ProfileHobby[]
 
   @@map("hobbies")
   @@schema("public")
 }
 
-// ตาราง ProfileHobby เชื่อม Profile กับ Hobby (profile_id + hobby_id เป็น primary key)
 model ProfileHobby {
   profile_id String
   hobby_id   Int
@@ -94,260 +79,235 @@ model ProfileHobby {
   @@schema("public")
 }
 
-// ตาราง ProfileImage สำหรับเก็บ URL รูปภาพจาก Supabase Storage
 model ProfileImage {
-  id         Int      @id @default(autoincrement())
+  id         Int     @id @default(autoincrement())
   profile_id String
   image_url  String
-  order      Int      @default(0) // ลำดับของรูปภาพ
+  order      Int     @default(0)
 
-  profile    Profile  @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profile_id], references: [id], onDelete: Cascade)
 
   @@map("profile_images")
   @@schema("public")
 }
 
-// กำหนดประเภท Role
-enum Role {
-  USER
-  ADMIN
-
-  @@schema("public")
-}
-
-// ตาราง Test สำหรับทดสอบ API (optional)
 model Test {
   id   Int    @id @default(autoincrement())
   name String
+
   @@map("test")
   @@schema("public")
 }
 
-// 4. ตาราง Swipes สำหรับระบบ Match (ปัดซ้าย/ปัดขวา)
 model Swipe {
-  id            Int          @id @default(autoincrement())
-  requester_id  String       // คนที่ส่งแรงกด (คนปัด)
-  receiver_id   String       // คนที่รับ (คนถูกปัด)
-  status        SwipeStatus  // 'LIKE' (ปัดขวา), 'DISLIKE' (ปัดซ้าย)
-  created_at    DateTime     @default(now())
+  id           Int         @id @default(autoincrement())
+  requester_id String      // text
+  receiver_id  String      // text
+  status       SwipeStatus
+  created_at   DateTime    @default(now())
 
-  // Relationships
-  requester     Profile      @relation("RequestedSwipes", fields: [requester_id], references: [id], onDelete: Cascade)
-  receiver      Profile      @relation("ReceivedSwipes", fields: [receiver_id], references: [id], onDelete: Cascade)
+  requester     Profile        @relation("RequestedSwipes", fields: [requester_id], references: [id], onDelete: Cascade)
+  receiver      Profile        @relation("ReceivedSwipes", fields: [receiver_id], references: [id], onDelete: Cascade)
   notifications Notification[] @relation("SwipeNotifications")
 
   @@map("swipes")
   @@schema("public")
 }
 
-// 5. ตาราง Packages ข้อมูลราคาและสิทธิพิเศษ (Master Data)
 model Package {
-  id                Int                @id @default(autoincrement())
-  name              String
-  price             Decimal            @db.Decimal(10, 2)
-  limit_matching    Int                // จำนวนที่ปัดได้ต่อวัน
-  icon_url          String?
-  currency          String             @default("THB")
-  billing_interval  String             @default("month") // month | year
-  features          Json?              // array ข้อความฟีเจอร์สำหรับแสดงบน UI
-  is_active         Boolean            @default(true)
-  sort_order        Int?
-  created_at        DateTime           @default(now())
-  updated_at        DateTime           @updatedAt
+  id               Int      @id @default(autoincrement())
+  name             String
+  price            Decimal  @db.Decimal(10, 2)
+  limit_matching   Int
+  icon_url         String?
+  currency         String   @default("THB")
+  billing_interval String   @default("month")
+  features         Json?
+  is_active        Boolean  @default(true)
+  sort_order       Int?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
 
-  subscriptions     UserSubscription[]
-  details           DetailPackage[]
+  subscriptions UserSubscription[]
+  details       DetailPackage[]
 
   @@map("packages")
   @@schema("public")
 }
 
-// 6. ตาราง UserSubscription เก็บประวัติการซื้อแพ็กเกจของผู้ใช้
 model UserSubscription {
-  id                   Int                    @id @default(autoincrement())
-  profile_id           String                 @unique // 1 โปรไฟล์ มีได้ 1 subscription
-  package_id            Int
-  status                SubscriptionStatus    @default(PENDING)
-  start_date            DateTime              @default(now())
-  end_date              DateTime?             // วันหมดอายุ
-  gateway               String?               // omise | stripe
-  external_charge_id    String?               @unique // จับคู่ webhook
-  paid_at               DateTime?             // เวลาชำระสำเร็จจริง
+  id                 Int                @id @default(autoincrement())
+  profile_id         String             @unique
+  package_id         Int
+  status             SubscriptionStatus @default(PENDING)
+  start_date         DateTime           @default(now())
+  end_date           DateTime?
+  gateway            String?
+  external_charge_id String?            @unique
+  paid_at            DateTime?
 
-  profile               Profile                @relation(fields: [profile_id], references: [id], onDelete: Cascade)
-  package               Package                @relation(fields: [package_id], references: [id])
-  transactions          PaymentTransaction[]
+  profile      Profile              @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  package      Package              @relation(fields: [package_id], references: [id])
+  transactions PaymentTransaction[]
 
   @@map("user_subscriptions")
   @@schema("public")
 }
 
-// 7. ตาราง PaymentTransaction เก็บแต่ละครั้งที่ charge (audit + webhook)
 model PaymentTransaction {
-  id                     Int                       @id @default(autoincrement())
-  user_subscription_id   Int
-  amount                 Decimal                   @db.Decimal(10, 2)
-  currency               String
-  gateway                String
-  external_charge_id     String?                   @unique // id จาก Omise
-  status                 PaymentTransactionStatus  @default(PENDING)
-  created_at             DateTime                  @default(now())
-  paid_at                DateTime?
+  id                   Int                      @id @default(autoincrement())
+  user_subscription_id Int
+  amount               Decimal                  @db.Decimal(10, 2)
+  currency             String
+  gateway              String
+  external_charge_id   String?                  @unique
+  status               PaymentTransactionStatus @default(PENDING)
+  created_at           DateTime                 @default(now())
+  paid_at              DateTime?
 
-  user_subscription      UserSubscription          @relation(fields: [user_subscription_id], references: [id], onDelete: Cascade)
+  user_subscription UserSubscription @relation(fields: [user_subscription_id], references: [id], onDelete: Cascade)
 
   @@map("payment_transactions")
   @@schema("public")
 }
 
 model DetailPackage {
-  id         Int      @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
+  packageId Int
+  value     String
+  position  Int
+  createdAt DateTime @default(now())
 
-  packageId  Int
-  package    Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
-
-  value      String
-  position   Int
-
-  createdAt  DateTime @default(now())
+  package Package @relation(fields: [packageId], references: [id], onDelete: Cascade)
 
   @@unique([packageId, position])
   @@index([packageId])
-
   @@map("package_details")
   @@schema("public")
 }
 
-// Enum สำหรับสถานะ subscription (Merry Package)
-enum SubscriptionStatus {
-  PENDING   // ยังไม่ชำระเงิน
-  ACTIVE    // ชำระสำเร็จ ใช้สิทธิ์ได้
-  EXPIRED   // หมดอายุ
-  CANCELLED // ยกเลิก
-  FAILED    // ชำระไม่สำเร็จ
+model Complaint {
+  id          String          @id @default(uuid())
+  userId      String          @map("user_id") @db.Uuid
+  issue       String
+  description String
+  status      ComplaintStatus @default(new)
+  adminNote   String?         @map("admin_note")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  resolvedAt  DateTime?       @map("resolved_at")
+  cancelledAt DateTime?       @map("cancelled_at")
 
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("complaints")
   @@schema("public")
 }
 
-// Enum สำหรับสถานะการชำระเงิน (แต่ละ transaction)
+// ── Chat ──────────────────────────────────────────────────────
+
+model ChatRoom {
+  id          String   @id @default(uuid())  // text
+  profile1_id String                          // text
+  profile2_id String                          // text
+  created_at  DateTime @default(now())
+
+  profile1      Profile        @relation("ChatRoomProfile1", fields: [profile1_id], references: [id], onDelete: Cascade)
+  profile2      Profile        @relation("ChatRoomProfile2", fields: [profile2_id], references: [id], onDelete: Cascade)
+  messages      Message[]
+  notifications Notification[] @relation("RoomNotifications")
+
+  @@unique([profile1_id, profile2_id])
+  @@map("chat_rooms")
+  @@schema("public")
+}
+
+model Message {
+  id         String   @id @default(uuid())  // text
+  room_id    String                          // text
+  sender_id  String                          // text
+  content    String   @db.Text
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  room   ChatRoom @relation(fields: [room_id], references: [id], onDelete: Cascade)
+  sender Profile  @relation("SentMessages", fields: [sender_id], references: [id], onDelete: Cascade)
+
+  @@index([room_id])
+  @@index([sender_id])
+  @@map("messages")
+  @@schema("public")
+}
+
+// ── Notifications ─────────────────────────────────────────────
+
+model Notification {
+  id           Int              @id @default(autoincrement())
+  actor_id     String?
+  recipient_id String
+  swipe_id     Int?
+  room_id      String?
+  type         NotificationType
+  data         Json?
+  created_at   DateTime         @default(now())
+  seen_at      DateTime? // ครั้งล่าสุดที่ recipient เปิด dropdown (สำหรับ badge ring)
+  read_at      DateTime?
+
+  actor     Profile?  @relation("NotificationActor", fields: [actor_id], references: [id], onDelete: SetNull)
+  recipient Profile   @relation("NotificationRecipient", fields: [recipient_id], references: [id], onDelete: Cascade)
+  swipe     Swipe?    @relation("SwipeNotifications", fields: [swipe_id], references: [id], onDelete: Cascade)
+  room      ChatRoom? @relation("RoomNotifications", fields: [room_id], references: [id], onDelete: Cascade)
+
+  @@unique([recipient_id, type, swipe_id])
+  @@unique([recipient_id, type, room_id])
+  @@index([recipient_id, created_at])
+  @@index([recipient_id, read_at])
+  @@map("notifications")
+  @@schema("public")
+}
+
+// ── Enums ─────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+  @@schema("public")
+}
+
+enum SwipeStatus {
+  LIKE
+  DISLIKE
+  @@schema("public")
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  FAILED
+  @@schema("public")
+}
+
 enum PaymentTransactionStatus {
   PENDING
   PAID
   FAILED
   REFUNDED
-
   @@schema("public")
 }
 
-// Enum สำหรับสถานะการปัด
-enum SwipeStatus {
-  LIKE
-  DISLIKE
-
-  @@schema("public")
-}
-
-// Enum สำหรับประเภท notification
 enum NotificationType {
   LIKED
   MATCHED
   MESSAGE
-
   @@schema("public")
 }
-
 
 enum ComplaintStatus {
   new
   pending
   resolved
   cancelled
-
-  @@schema("public")
-}
-
-model Complaint {
-  id          String           @id @default(uuid())
-
-  userId      String           @map("user_id") @db.Uuid
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  issue       String
-  description String
-
-  status      ComplaintStatus  @default(new)
-  adminNote   String?          @map("admin_note")
-
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
-  resolvedAt  DateTime?        @map("resolved_at")
-  cancelledAt DateTime?        @map("cancelled_at")
-
-  @@map("complaints")
-  @@schema("public")
-}
-
-// ตาราง ChatRoom สำหรับเก็บห้องแชทระหว่างคู่ที่ match กัน
-model ChatRoom {
-  id          String    @id @default(uuid())
-  profile1_id String
-  profile2_id String
-  created_at  DateTime  @default(now())
-
-  // Relationships
-  profile1    Profile   @relation("ChatRoomProfile1", fields: [profile1_id], references: [id], onDelete: Cascade)
-  profile2    Profile   @relation("ChatRoomProfile2", fields: [profile2_id], references: [id], onDelete: Cascade)
-  messages    Message[]
-  notifications Notification[] @relation("RoomNotifications")
-
-  // ป้องกัน duplicate room ระหว่าง 2 คนเดิม
-  @@unique([profile1_id, profile2_id])
-  @@map("chat_rooms")
-   @@schema("public") 
-}
-
-// ตาราง Message สำหรับเก็บข้อความในห้องแชท
-model Message {
-  id         String    @id @default(uuid())
-  room_id    String
-  sender_id  String    // profile_id ของคนส่ง
-  content    String    @db.Text
-  is_read    Boolean   @default(false)
-  created_at DateTime  @default(now())
-
-  // Relationships
-  room       ChatRoom  @relation(fields: [room_id], references: [id], onDelete: Cascade)
-  sender     Profile   @relation("SentMessages", fields: [sender_id], references: [id], onDelete: Cascade)
-
-  @@map("messages")
-   @@schema("public") 
-}
-
-// ตาราง Notifications สำหรับเก็บแจ้งเตือน (รองรับ unread/read + realtime)
-model Notification {
-  id            Int              @id @default(autoincrement())
-  actor_id      String?          // คนที่ก่อเหตุ (Profile.id) เช่น คนที่มากด LIKE / คนที่ส่งข้อความ
-  recipient_id  String           // ผู้รับ noti (Profile.id)
-  swipe_id      Int?             // อ้างอิง swipe (Swipe.id) สำหรับ noti จากการปัด (MATCHED จะเก็บ swipe ล่าสุดที่ทำให้ match เกิด)
-  room_id       String?          // อ้างอิงห้องแชท (ChatRoom.id) สำหรับ noti ประเภท MESSAGE (1 ห้อง = 1 noti)
-  type          NotificationType
-  data          Json?            // payload เสริม (เช่น { matched_with_swipe_id: <อีกฝั่ง> }, หรือข้อมูล chat ในอนาคต)
-  created_at    DateTime         @default(now())
-  read_at       DateTime?        // null = ยังไม่อ่าน
-
-  // Relationships
-  actor         Profile?         @relation("NotificationActor", fields: [actor_id], references: [id], onDelete: SetNull)
-  recipient     Profile          @relation("NotificationRecipient", fields: [recipient_id], references: [id], onDelete: Cascade)
-  swipe         Swipe?           @relation("SwipeNotifications", fields: [swipe_id], references: [id], onDelete: Cascade)
-  room          ChatRoom?        @relation("RoomNotifications", fields: [room_id], references: [id], onDelete: Cascade)
-
-  // กัน noti ซ้ำจาก swipe เดียวกัน (LIKE/MATCH)
-  @@unique([recipient_id, type, swipe_id])
-  // กัน noti ซ้ำแบบ 1 ห้องสำหรับ MESSAGE
-  @@unique([recipient_id, type, room_id])
-  @@index([recipient_id, created_at])
-  @@index([recipient_id, read_at])
-
-  @@map("notifications")
   @@schema("public")
 }
