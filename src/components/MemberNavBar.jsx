@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/login/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { apiClient } from "@/lib/apiClient";
 
-
 export default function MemberNavBar({ onLogout }) {
   const { user } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
@@ -15,35 +14,35 @@ export default function MemberNavBar({ onLogout }) {
   const profileDropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
 
-useEffect(() => {
-  const controller = new AbortController();
+  useEffect(() => {
+    const controller = new AbortController();
 
-  const fetchProfileImage = async () => {
-    if (!user?.id) {
-      setProfileImageUrl(null);
-      return;
-    }
-
-    try {
-      const response = await apiClient.get("/me/profile-image", {
-        signal: controller.signal,
-      });
-
-      setProfileImageUrl(response.data.profile_image_url ?? null);
-    } catch (error) {
-      if (error.name !== "CanceledError") {
-        console.error("fetchProfileImage error:", error);
+    const fetchProfileImage = async () => {
+      if (!user?.id) {
         setProfileImageUrl(null);
+        return;
       }
-    }
-  };
 
-  fetchProfileImage();
+      try {
+        const response = await apiClient.get("/me/profile-image", {
+          signal: controller.signal,
+        });
 
-  return () => {
-    controller.abort();
-  };
-}, [user?.id]);
+        setProfileImageUrl(response.data.profile_image_url ?? null);
+      } catch (error) {
+        if (error.name !== "CanceledError") {
+          console.error("fetchProfileImage error:", error);
+          setProfileImageUrl(null);
+        }
+      }
+    };
+
+    fetchProfileImage();
+
+    return () => {
+      controller.abort();
+    };
+  }, [user?.id]);
 
   const userInitials = (user?.username || "MM").slice(0, 2).toUpperCase();
 
@@ -79,7 +78,8 @@ useEffect(() => {
         <div className="flex items-center gap-3">
           {/* TODO: link to chat — ใส่ตรงนี้ */}
           <Link
-            href="/chat"
+            // แทนที่จะเป็น /chat เฉยๆ ให้แก้เป็นแบบนี้:
+            href="/matchingpage?showChat=true"
             className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 hover:bg-purple-100 cursor-pointer"
             aria-label="Chat"
           >
