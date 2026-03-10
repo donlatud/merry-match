@@ -27,7 +27,7 @@ export function MerryProfileCard({ profile, children, onViewProfile }) {
 
   return (
     <div>
-      <div className="px-4 pt-4 pb-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+      <div className="pb-2 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         {/* Desktop profile image */}
         {mainImage && (
           <img

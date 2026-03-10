@@ -143,9 +143,8 @@ export default function MerryListPage() {
   return (
     <div>
       <NavBar />
-      <div className="flex justify-center">
-        <div className="flex justify-center flex-col lg:w-[933px]">
-          <div className="py-10 px-4 gap-10 flex flex-col">
+      <div className="mx-auto w-full max-w-[933px] px-4">
+        <div className="py-10 flex flex-col gap-8">
             <div className="flex flex-col gap-2">
               <span className="text-body2 text-beige-700 lg:text-beige-600 font-semibold">
                 MERRY LIST
@@ -154,12 +153,12 @@ export default function MerryListPage() {
                 Let’s know each other with Merry!
               </h1>
             </div>
-            <div className="flex flex-col lg:flex-row  lg:items-end gap-4">
-              <div className="gap-4 w-full flex flex-row sm:flex-row">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+              <div className="flex w-full flex-col gap-4 sm:flex-row">
                 <button
                   type="button"
                   onClick={handleClickMerryToYou}
-                  className="group border relative px-6 py-4 w-full lg:w-[200px] rounded-3xl flex cursor-pointer bg-white transition transform hover:-translate-y-0.5 hover:shadow-md hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200 focus:ring-offset-2"
+                  className="group relative flex w-full rounded-3xl border bg-white px-6 py-4 transition transform cursor-pointer hover:-translate-y-0.5 hover:border-red-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-200 focus:ring-offset-2 lg:w-[200px]"
                   aria-label="View people who merry you"
                 >
                   <div className="flex flex-col gap-3">
@@ -179,7 +178,7 @@ export default function MerryListPage() {
                   </div>
                 </button>
 
-                <div className="border px-6 py-4 w-full rounded-3xl lg:w-[200px] flex bg-white">
+                <div className="flex w-full rounded-3xl border bg-white px-6 py-4 lg:w-[200px]">
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1">
                       <p className="text-headline4 text-red-500 font-bold">
@@ -198,7 +197,7 @@ export default function MerryListPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col w-full lg:w-full items-end lg:items-end">
+              <div className="flex w-full flex-col items-start lg:items-end">
                 <div className="flex gap-2.5">
                   <p className="text-body2 text-gray-700 font-medium">Merry limit today</p>
                   <p className="text-body2 text-red-400">
@@ -211,7 +210,7 @@ export default function MerryListPage() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+            <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-body3 text-gray-600">Sort by</p>
 
               {/* Mobile: dropdown (using shared Select component) */}
@@ -349,7 +348,6 @@ export default function MerryListPage() {
               No profiles in this filter yet.
             </div>
           )}
-        </div>
       </div>
       {/* Modal: แนะนำแพ็กเกจสำหรับ Merry to you (ไม่มีปุ่มกากบาท / กดรอบนอกไม่ปิด) */}
       {showPlanModal && (
@@ -358,12 +356,12 @@ export default function MerryListPage() {
           onClick={() => setShowPlanModal(false)}
         >
           <div
-            className="bg-white rounded-[32px] w-auto max-w-full shadow-2xl p-6 lg:p-8"
+            className="w-full max-w-[760px] rounded-[32px] bg-white p-6 shadow-2xl lg:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-6">
               <div className="flex flex-col gap-2">
-                <h2 className="text-headline4 w-fit font-bold text-gray-900">
+                <h2 className="text-headline4 font-bold text-gray-900">
                   See everyone who merry you
                 </h2>
                 <p className="text-body3 text-gray-600 max-w-[373px] leading-relaxed">
@@ -371,7 +369,7 @@ export default function MerryListPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 w-full gap-4 lg:grid-cols-1">
+              <div className="mx-auto grid w-full max-w-[380px] grid-cols-1 gap-4">
                 {premiumPackage && (
                   <MerryPackageCard
                     {...premiumPackage}
@@ -384,7 +382,7 @@ export default function MerryListPage() {
                 )}
               </div>
 
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center gap-2 pt-1">
                 <button
                   type="button"
                   className="px-4 py-2 rounded-full text-body3 font-semibold text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
