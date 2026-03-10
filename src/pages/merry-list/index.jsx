@@ -154,7 +154,7 @@ export default function MerryListPage() {
               </h1>
             </div>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-              <div className="flex w-full flex-col gap-4 sm:flex-row">
+              <div className="flex w-full flex-row gap-4 sm:flex-row">
                 <button
                   type="button"
                   onClick={handleClickMerryToYou}
@@ -197,7 +197,7 @@ export default function MerryListPage() {
                 </div>
               </div>
 
-              <div className="flex w-full flex-col items-start lg:items-end">
+              <div className="flex w-full flex-col items-end lg:items-end">
                 <div className="flex gap-2.5">
                   <p className="text-body2 text-gray-700 font-medium">Merry limit today</p>
                   <p className="text-body2 text-red-400">

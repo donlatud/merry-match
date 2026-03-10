@@ -245,7 +245,8 @@ export default function MerryToYouPage() {
               !error &&
               profiles.length > 0 &&
               profiles.map((profile) => (
-                <MerryProfileCard
+                <div className="px-4">
+                  <MerryProfileCard
                   key={profile.id}
                   profile={profile}
                   onViewProfile={() => setSelectedProfileId(profile.id)}
@@ -259,6 +260,7 @@ export default function MerryToYouPage() {
                     <ButtonMerry onClick={() => handleMerryFromList(profile.id)} />
                   </div>
                 </MerryProfileCard>
+                </div>
               ))}
           </div>
         </div>
@@ -343,7 +345,7 @@ export default function MerryToYouPage() {
           </div>
         </div>
       )}
-      
+
       <ProfilePopup
         open={Boolean(selectedProfileId)}
         onClose={() => setSelectedProfileId(null)}
