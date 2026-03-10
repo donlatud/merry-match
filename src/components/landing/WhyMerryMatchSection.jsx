@@ -7,7 +7,7 @@ export default function WhyMerryMatchSection() {
   return (
     <section
       id="why-merry-match"
-      className="lg:h-[533px] mx-auto flex items-center justify-around bg-utility-bg"
+      className="lg:h-[533px] mx-auto flex items-center justify-around bg-utility-bg relative overflow-hidden"
     >
       <div className="h-200 lg:w-[1120px] mx-auto flex flex-col lg:flex-row items-center justify-around lg:justify-between bg-utility-bg lg:gap-[25px]">
         <div className="w-[343px] lg:w-[549px] text-left flex flex-col items-start gap-10">
