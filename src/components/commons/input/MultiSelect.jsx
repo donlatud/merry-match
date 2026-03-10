@@ -168,10 +168,7 @@ const MultiSelect = ({
           ${error ? "border-utility-red" : ""}
         `}
       >
-        {value.length === 0 && (
-          <span className="text-gray-600 **:text-body2">{placeholder}</span>
-        )}
-
+    
         {value.map((item, index) => (
           <div
             key={item}

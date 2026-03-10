@@ -49,6 +49,8 @@ export default function ProfilePage() {
   const [profileError, setProfileError] = useState(null);
   const [updating, setUpdating] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUser, setPreviewUser] = useState(null);
+  const [previewImageUrls, setPreviewImageUrls] = useState([]);
   const fileInputRef = useRef(null);
   const pendingPhotoSlotRef = useRef(null);
 
@@ -173,6 +175,65 @@ export default function ProfilePage() {
     });
   };
 
+  const calculateAge = (dob) => {
+    if (!dob) return null;
+    const now = new Date();
+    const birth = new Date(dob);
+    let age = now.getFullYear() - birth.getFullYear();
+    const m = now.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+    return age;
+  };
+
+  const handleOpenPreview = () => {
+    // cleanup object URLs เดิม (ถ้ามี)
+    setPreviewImageUrls((prev) => {
+      prev.forEach((url) => URL.revokeObjectURL(url));
+      return [];
+    });
+
+    const tempUrls = [];
+    const images = photos
+      .map((photo) => {
+        if (typeof photo === "string" && photo) return photo;
+        if (photo instanceof File) {
+          const url = URL.createObjectURL(photo);
+          tempUrls.push(url);
+          return url;
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    if (tempUrls.length > 0) {
+      setPreviewImageUrls(tempUrls);
+    }
+
+    const age = calculateAge(dateOfBirth);
+
+    setPreviewUser({
+      name,
+      age,
+      location,
+      sexualIdentity,
+      sexualPreference,
+      racialPreference,
+      meetingInterest,
+      about,
+      interests,
+      images,
+    });
+
+    setPreviewOpen(true);
+  };
+
+  // cleanup object URLs เมื่อ component ถูก unmount
+  React.useEffect(() => {
+    return () => {
+      previewImageUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [previewImageUrls]);
+
   if (loading) {
     return (
       <>
@@ -215,7 +276,7 @@ export default function ProfilePage() {
                     <SecondaryButton
                       type="button"
                       className="w-[156px] font-semibold py-4 "
-                      onClick={() => setPreviewOpen(true)}
+                      onClick={handleOpenPreview}
                     >
                       Preview Profile
                     </SecondaryButton>
@@ -235,7 +296,12 @@ export default function ProfilePage() {
               <h1 className="text-headline4 text-gray-900 font-bold col-span-1 md:col-span-2">Basic Information</h1>
               <div className="gap-1">
                 <h1 className="text-body2">Name</h1>
-                <InputBar value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter name" />
+                <InputBar
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter name"
+                  maxLength={24}
+                />
               </div>
               <div className="gap-1">
                 <h1 className="text-body2">Date of birth</h1>
@@ -251,7 +317,12 @@ export default function ProfilePage() {
               </div>
               <div className="gap-1">
                 <h1 className="text-body2">Username</h1>
-                <InputBar value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter username" />
+                <InputBar
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter username"
+                  maxLength={24}
+                />
               </div>
               <div className="gap-1">
                 <h1 className="text-body2 text-gray-600">Email</h1>
@@ -342,7 +413,7 @@ export default function ProfilePage() {
                 <SecondaryButton
                   type="button"
                   className="w-[156px] font-semibold py-4 "
-                  onClick={() => setPreviewOpen(true)}
+                  onClick={handleOpenPreview}
                 >
                   Preview Profile
                 </SecondaryButton>
@@ -368,6 +439,7 @@ export default function ProfilePage() {
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
         id={profileId}
+        prefilledUser={previewUser}
         leftButton={null}
         rightButton={null}
       />
