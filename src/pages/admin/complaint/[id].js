@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import Modal from "@/components/commons/modal/modal";
 import { useComplaint } from "@/hooks/complaint/useComplaint";
 import { useComplaintActions } from "@/hooks/complaint/useComplaintAction";
+import { Loading } from "@/components/commons/Loading/Loading";
 
 function ComplaintPageId() {
   const router = useRouter();
@@ -49,14 +50,14 @@ function ComplaintPageId() {
       action: cancelComplaint,
     },
   };
-  if (loading) return <AdminLayout>Loading...</AdminLayout>;
+  if (loading) return <AdminLayout><Loading /></AdminLayout>;
   if (error) return <AdminLayout>Error: {error}</AdminLayout>;
   if (!complaint) return null;
   return (
     <AdminLayout>
       {complaint && (
         <div className="h-screen flex flex-col">
-          <div className="flex items-center justify-between py-4 px-10 h-20 border-b shadow-sm">
+          <div className="flex items-center justify-between py-4 px-15 h-20 border-b shadow-sm">
             <div className="flex w-94.5 gap-4">
               <button
                 onClick={() => {
@@ -100,8 +101,8 @@ function ComplaintPageId() {
               </PrimaryButton>
             </div>
           </div>
-          <div className="bg-gray-100 flex flex-1 justify-center py-20">
-            <div className="bg-white py-10 px-25 w-270 mx-auto flex flex-col gap-10 rounded-2xl shadow-sm">
+          <div className="flex-1 bg-gray-100 px-15 py-6">
+            <div className="bg-white py-10 px-25 w-full mx-auto flex flex-col gap-10 rounded-2xl shadow-sm h-fit">
               {/* Complaint Username */}
               <span className="text-body1 text-gray-700">
                 Complaint by:

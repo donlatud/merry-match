@@ -10,7 +10,7 @@ export function usePostComplaint() {
     setError(null);
 
     try {
-      const response = await apiClient.post("/complaint", {
+      const response = await apiClient.post("/admin/complaint", {
         issue,
         description,
       });

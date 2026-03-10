@@ -16,6 +16,7 @@ import Image from "next/image";
 import InputBar from "@/components/commons/input/InputBar";
 import { PrimaryButton } from "@/components/commons/button/PrimaryButton";
 import Modal from "@/components/commons/modal/modal";
+import { Loading } from "@/components/commons/Loading/Loading";
 
 import { CSS } from "@dnd-kit/utilities";
 
@@ -43,6 +44,7 @@ function SortableRow({ item, index, onDelete }) {
     transition,
   };
   const router = useRouter();
+
   return (
     <tr
       ref={setNodeRef}
@@ -111,7 +113,7 @@ function SortableRow({ item, index, onDelete }) {
           leftText="Yes, I want to delete"
           rightText="No, I don't want"
           onLeftClick={async () => {
-            await onDelete(item .id);
+            await onDelete(item.id);
             setOpen(false);
           }}
           onRightClick={() => {
@@ -126,17 +128,52 @@ function SortableRow({ item, index, onDelete }) {
 
 function MerryPackage() {
   const [items, setItems] = useState([]);
-
+  const [searchTerm, setSearchTerm] = useState("");
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState([]);
 
   useEffect(() => {
+    try{
     async function fetchData() {
-      const res = await fetch("/api/merry-package");
+      const res = await fetch("/api/admin/merry-package");
       const data = await res.json();
       setItems(data);
+      setLoading(true)
     }
     fetchData();
+  }
+  catch(error){
+    setError(error)
+  }
+  finally{
+    setLoading(false)
+  }
   }, []);
+
+  useEffect(() => {
+    try{
+      console.log("items updated:", items);
+      setLoading(true)
+    }
+    catch(error){
+      console.log(error)
+    }
+    finally{
+      setLoading(false)
+    }
+  }, [items]);
+
+  const filteredItems = items.filter((item) => {
+    const keyword = searchTerm.toLowerCase();
+
+    const matchesSearch =
+      item.name.toLowerCase().includes(keyword) ||
+      String(item.merryLimit).includes(keyword) ||
+      String(item.price).includes(keyword);
+
+    return matchesSearch;
+  });
 
   async function handleDragEnd(event) {
     const { active, over } = event;
@@ -149,7 +186,7 @@ function MerryPackage() {
 
     setItems(newItems);
 
-    await fetch("/api/merry-package/reorder", {
+    await fetch("/api/admin/merry-package/reorder", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items: newItems }),
@@ -158,7 +195,7 @@ function MerryPackage() {
 
   async function handleDelete(id) {
     try {
-      const res = await fetch(`/api/merry-package/${id}`, {
+      const res = await fetch(`/api/admin/merry-package/${id}`, {
         method: "DELETE",
       });
 
@@ -169,12 +206,13 @@ function MerryPackage() {
       console.error(err);
     }
   }
-
+  console.log(loading)
+if (loading) return <AdminLayout><Loading /></AdminLayout>;
   return (
     <AdminLayout>
       <div className="h-screen flex flex-col">
-        <div className="h-[80px] px-10 py-4 flex items-center justify-between gap-4 shrink-0">
-          <h4 className="text-headline4 font-bold w-[568px]">Merry Package</h4>
+        <div className="h-20 px-15 py-4 flex items-center justify-between gap-4 shrink-0">
+          <h4 className="text-headline4 font-bold w-142">Merry Package</h4>
           <div className=" flex gap-4">
             <InputBar
               leftIcon={
@@ -187,6 +225,8 @@ function MerryPackage() {
               }
               className="w-[320px]"
               placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
 
             <PrimaryButton
@@ -200,8 +240,8 @@ function MerryPackage() {
 
         <hr />
 
-        <div className="flex-1 bg-gray-100 p-6 overflow-auto">
-          <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+        <div className="flex-1 bg-gray-100 px-15 py-6">
+          <div className="bg-white rounded-2xl shadow-sm h-fit w-full overflow-clip">
             <DndContext
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
@@ -225,7 +265,7 @@ function MerryPackage() {
                   </thead>
 
                   <tbody>
-                    {items.map((item, index) => (
+                    {filteredItems.map((item, index) => (
                       <SortableRow
                         key={item.id}
                         item={item}
@@ -237,6 +277,12 @@ function MerryPackage() {
                 </table>
               </SortableContext>
             </DndContext>
+            {filteredItems.length === 0 && 
+            <div className=" flex justify-center items-center p-20">
+              <span className="text-gray-700">
+                Not found.
+              </span>
+              </div>}
           </div>
         </div>
       </div>

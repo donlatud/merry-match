@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import InputBar from "@/components/commons/input/InputBar";
+import PasswordInput from "@/components/commons/input/PasswordInput";
 import { useAuth } from "@/hooks/login/useAuth";
 import { PrimaryButton } from "@/components/commons/button/PrimaryButton";
 import { merryToast } from '@/components/commons/toast/MerryToast'
@@ -45,7 +46,7 @@ const handleSubmit = async (e) => {
       <CheckCircleIcon className="size-10! text-green-500" />,
     );
     setTimeout(() => {
-      router.push("/");
+      router.push("/admin");
     }, 1500); // หน่วง 1.5 วินาที
   } catch (error) {
     const msg = error.message || "Something went wrong";
@@ -85,7 +86,7 @@ const handleSubmit = async (e) => {
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
           placeholder="Enter Username or Email"
-          className=""
+          className="max-h-12"
         />
         </div>
 
@@ -93,20 +94,12 @@ const handleSubmit = async (e) => {
         <div>
         <label className="block text-sm mb-1">Password</label>
         <div className="relative mb-4">
-          <InputBar
-            type={showPassword ? "text" : "password"}
+          <PasswordInput
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter password"
-            className=""
+            className="max-h-12"
           />
-          <button
-            type="button"
-            onClick={() => setShowPassword((prev) => !prev)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-500"
-          >
-            {showPassword ? "Hide" : "Show"}
-          </button>
         </div>
         </div>
         {/* Error */}

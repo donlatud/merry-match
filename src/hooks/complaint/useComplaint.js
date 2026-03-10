@@ -14,11 +14,11 @@ export function useComplaint(id) {
       setError(null);
 
       try {
-        const res = await apiClient.get(`/complaint/${id}`);
+        const res = await apiClient.get(`/admin/complaint/${id}`);
         let data = res.data;
 
         if (data.status === "new") {
-          const updated = await apiClient.patch(`/complaint/${id}`, {
+          const updated = await apiClient.patch(`/admin/complaint/${id}`, {
             status: "pending",
           });
           data = updated.data;
