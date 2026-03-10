@@ -1,26 +1,36 @@
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HeartIcon } from "@heroicons/react/24/outline";
 import { apiClient } from "@/lib/apiClient";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/providers/supabase.provider";
+import { ProfilePopup } from "@/components/profilePopup/ProfilePopup";
+import { ButtonMerry } from "@/components/commons/button/IconButton";
 
 export default function NotificationDropdown({ variant = "desktop", onClose }) {
+  const router = useRouter();
   const desktopDropdownRef = useRef(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState(null);
+  const [selectedProfileId, setSelectedProfileId] = useState(null);
+  const [profilePopupOpen, setProfilePopupOpen] = useState(false);
+  const [merrySubmitting, setMerrySubmitting] = useState(false);
   const DESKTOP_VISIBLE_ITEMS = 6;
   const DESKTOP_ITEM_HEIGHT = 64;
 
   const limit = useMemo(() => 50, []);
 
   const isPremium = Boolean(
-    me?.subscription?.status === "ACTIVE" && me?.subscription?.package
+    me?.subscription?.status === "ACTIVE" && me?.subscription?.package,
   );
 
   useEffect(() => {
-    apiClient.get("/me").then((res) => setMe(res.data ?? null)).catch(() => setMe(null));
+    apiClient
+      .get("/me")
+      .then((res) => setMe(res.data ?? null))
+      .catch(() => setMe(null));
   }, []);
 
   const fetchNotifications = useCallback(async () => {
@@ -55,7 +65,7 @@ export default function NotificationDropdown({ variant = "desktop", onClose }) {
         },
         () => {
           fetchNotifications();
-        }
+        },
       )
       .subscribe();
 
@@ -87,7 +97,10 @@ export default function NotificationDropdown({ variant = "desktop", onClose }) {
     const date = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(date.getTime())) return "";
 
-    const diffSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+    const diffSeconds = Math.max(
+      0,
+      Math.floor((Date.now() - date.getTime()) / 1000),
+    );
     if (diffSeconds < 10) return "Just now";
     if (diffSeconds < 60) return `${diffSeconds}s ago`;
 
@@ -141,18 +154,128 @@ export default function NotificationDropdown({ variant = "desktop", onClose }) {
       headline: "Someone Just Merry you!",
       description: (
         <>
-          Upgrade to <span className="font-bold text-utility-red">Premium</span> to see their profile
+          Upgrade to <span className="font-bold text-utility-red">Premium</span>{" "}
+          to see their profile
         </>
       ),
     };
   };
 
-  const handleNotificationClick = useCallback((item) => {
-    onClose?.();
-    if (item?.id != null) {
-      apiClient.patch("/notifications", { id: item.id }).catch(() => {});
+  const handleNotificationClick = useCallback(
+    async (e, item) => {
+      const isPremiumLiked =
+        item?.type === "liked" && isPremium && item?.meta?.requesterProfileId;
+
+      if (isPremiumLiked) {
+        e?.preventDefault?.();
+        if (item?.id != null) {
+          apiClient.patch("/notifications", { id: item.id }).catch(() => {});
+        }
+        setSelectedProfileId(item.meta.requesterProfileId);
+        setProfilePopupOpen(true);
+        return;
+      }
+
+      const isMatched =
+        item?.type === "matched" && item?.meta?.requesterProfileId;
+      if (isMatched) {
+        e?.preventDefault?.();
+        onClose?.();
+        if (item?.id != null) {
+          apiClient.patch("/notifications", { id: item.id }).catch(() => {});
+        }
+        try {
+          const res = await apiClient.post("/chat/rooms", {
+            partnerId: item.meta.requesterProfileId,
+          });
+          const roomId = res.data?.data?.id;
+          if (roomId) {
+            router.push(`/chat/${roomId}`);
+          } else {
+            router.push("/chat");
+          }
+        } catch {
+          router.push("/chat");
+        }
+        return;
+      }
+      onClose?.();
+      // Mark as read: MESSAGE ใช้ roomId, ประเภทอื่นใช้ id
+      if (item?.type === "message" && item?.meta?.roomId) {
+        apiClient
+          .patch("/notifications", { roomId: item.meta.roomId })
+          .catch(() => {});
+      } else if (item?.id != null) {
+        apiClient.patch("/notifications", { id: item.id }).catch(() => {});
+      }
+    },
+    [isPremium, onClose, router],
+  );
+
+  const closeProfilePopup = useCallback(() => {
+    setProfilePopupOpen(false);
+    setSelectedProfileId(null);
+    setMerrySubmitting(false);
+  }, []);
+
+  const handlePopupMerry = useCallback(async () => {
+    if (!selectedProfileId || merrySubmitting) return;
+
+    setMerrySubmitting(true);
+
+    try {
+      const { data } = await apiClient.post("/matching/swipe", {
+        receiverId: selectedProfileId,
+        status: "LIKE",
+      });
+
+      await fetchNotifications();
+      closeProfilePopup();
+
+      if (data?.isMatch) {
+        onClose?.();
+        try {
+          const res = await apiClient.post("/chat/rooms", {
+            partnerId: selectedProfileId,
+          });
+          const roomId = res.data?.data?.id;
+          if (roomId) {
+            router.push(`/chat/${roomId}`);
+          } else {
+            router.push("/chat");
+          }
+        } catch {
+          router.push("/chat");
+        }
+      }
+    } catch (error) {
+      console.error("Merry from notification error:", error);
+    } finally {
+      setMerrySubmitting(false);
     }
-  }, [onClose]);
+  }, [
+    closeProfilePopup,
+    fetchNotifications,
+    merrySubmitting,
+    onClose,
+    router,
+    selectedProfileId,
+  ]);
+
+  const popupRightButton = (
+    items.some(
+      (item) =>
+        item?.type === "matched" &&
+        String(item?.meta?.requesterProfileId) === String(selectedProfileId),
+    ) ? null : (
+      <ButtonMerry
+        key={`merry-${selectedProfileId ?? "notification"}`}
+        onClick={handlePopupMerry}
+        disabled={merrySubmitting}
+        className="w-20 h-20 disabled:opacity-40 disabled:cursor-not-allowed [&_img]:w-12 [&_img]:h-12"
+      />
+    )
+  );
 
   const renderNotificationItem = ({
     id,
@@ -174,19 +297,28 @@ export default function NotificationDropdown({ variant = "desktop", onClose }) {
     const heartCount = type === "liked" ? 1 : type === "matched" ? 2 : 0;
     const isUnread = read_at == null;
     const shouldBlurAvatar = type === "liked" && !isPremium;
+    const resolvedHref =
+      type === "liked" && !isPremium ? "/payment" : href || "/notifications";
 
     return (
       <Link
         key={id}
-        href={href || "/notifications"}
+        href={resolvedHref}
         className={`flex items-start gap-3 text-gray-700 transition-colors hover:bg-purple-100 cursor-pointer px-[14px] py-3 rounded-[8px] ${isUnread ? "bg-red-100/50" : ""}`}
-        onClick={() => {
-          handleNotificationClick({ id, type, meta });
+        onClick={(e) => {
+          handleNotificationClick(e, { id, type, meta });
         }}
       >
         <div className="relative shrink-0 size-8 rounded-full bg-gray-100">
-          <div className={shouldBlurAvatar ? "size-8 overflow-hidden rounded-full" : ""}>
-            <Avatar size="xl" className={`size-8 ${shouldBlurAvatar ? "blur-sm" : ""}`}>
+          <div
+            className={
+              shouldBlurAvatar ? "size-8 overflow-hidden rounded-full" : ""
+            }
+          >
+            <Avatar
+              size="xl"
+              className={`size-8 ${shouldBlurAvatar ? "blur-sm" : ""}`}
+            >
               <AvatarImage
                 src={profileImageUrl || ""}
                 alt={name || "Profile"}
@@ -211,13 +343,24 @@ export default function NotificationDropdown({ variant = "desktop", onClose }) {
 
         <div className="min-w-0 flex-1 relative">
           <div className="flex items-start justify-between gap-2">
-            <p className={`text-body4 ${isUnread ? "font-semibold text-purple-800" : "text-gray-700"}`}>
-              {isUnread && <span className="inline-block size-[6.4px] rounded-full bg-purple-500 mr-1 mb-[2px] align-middle" aria-hidden />}
+            <p
+              className={`text-body4 ${isUnread ? "font-semibold text-purple-800" : "text-gray-700"}`}
+            >
+              {isUnread && (
+                <span
+                  className="inline-block size-[6.4px] rounded-full bg-purple-500 mr-1 mb-[2px] align-middle"
+                  aria-hidden
+                />
+              )}
               {headline}
-              {compact && <span className="text-tagline text-gray-500 ml-1">{time}</span>}
+              {compact && (
+                <span className="text-tagline text-gray-500 ml-1">{time}</span>
+              )}
             </p>
             {!compact && (
-              <span className="shrink-0 text-tagline text-gray-500">{time}</span>
+              <span className="shrink-0 text-tagline text-gray-500">
+                {time}
+              </span>
             )}
           </div>
           <p className="text-body4 text-gray-700">{description}</p>
@@ -233,46 +376,69 @@ export default function NotificationDropdown({ variant = "desktop", onClose }) {
 
   if (variant === "mobile") {
     return (
-      <div className="fixed right-0 top-13 -z-1 flex w-screen h-screen flex-col items-center rounded-[4px] bg-utility-white shadow-[4px_4px_16px_0px_#00000014]">
-        <div className="flex h-full w-[375px] min-h-0 flex-col gap-4 px-4 py-6">
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
-            {loading ? (
-              <div className="px-[14px] py-3 text-body4 text-gray-500">Loading…</div>
-            ) : renderedItems.length === 0 ? (
-              <div className="px-[14px] py-3 text-body4 text-gray-500">
-                No notifications yet.
-              </div>
-            ) : (
-              renderedItems.map((item) => renderNotificationItem(item))
-            )}
+      <>
+        <ProfilePopup
+          open={profilePopupOpen}
+          onClose={closeProfilePopup}
+          id={selectedProfileId}
+          leftButton={<></>}
+          rightButton={popupRightButton}
+        />
+        <div className="fixed right-0 top-13 -z-1 flex w-screen h-screen flex-col items-center rounded-[4px] bg-utility-white shadow-[4px_4px_16px_0px_#00000014]">
+          <div className="flex h-full w-[375px] min-h-0 flex-col gap-4 px-4 py-6">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+              {loading ? (
+                <div className="px-[14px] py-3 text-body4 text-gray-500">
+                  Loading…
+                </div>
+              ) : renderedItems.length === 0 ? (
+                <div className="px-[14px] py-3 text-body4 text-gray-500">
+                  No notifications yet.
+                </div>
+              ) : (
+                renderedItems.map((item) => renderNotificationItem(item))
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div
-      ref={desktopDropdownRef}
-      className="absolute right-0 top-full z-50 mt-2 py-2 gap-2 flex flex-col w-[251px] rounded-[16px] bg-utility-white shadow-button overflow-hidden"
-    >
-
+    <>
+      <ProfilePopup
+        open={profilePopupOpen}
+        onClose={closeProfilePopup}
+        id={selectedProfileId}
+        leftButton={<></>}
+        rightButton={popupRightButton}
+      />
       <div
-        className="flex flex-col overflow-y-auto"
-        style={{ maxHeight: `${DESKTOP_VISIBLE_ITEMS * DESKTOP_ITEM_HEIGHT}px` }}
+        ref={desktopDropdownRef}
+        className="absolute right-0 top-full z-50 mt-2 py-2 gap-2 flex flex-col w-[251px] rounded-[16px] bg-utility-white shadow-button overflow-hidden"
       >
-        {loading ? (
-          <div className="px-[14px] py-3 text-body4 text-gray-500">Loading…</div>
-        ) : renderedItems.length === 0 ? (
-          <div className="px-[14px] py-3 text-body4 text-gray-500">
-            No notifications yet.
-          </div>
-        ) : (
-          renderedItems.map((item) =>
-            renderNotificationItem({ ...item, compact: true })
-          )
-        )}
+        <div
+          className="flex flex-col overflow-y-auto"
+          style={{
+            maxHeight: `${DESKTOP_VISIBLE_ITEMS * DESKTOP_ITEM_HEIGHT}px`,
+          }}
+        >
+          {loading ? (
+            <div className="px-[14px] py-3 text-body4 text-gray-500">
+              Loading…
+            </div>
+          ) : renderedItems.length === 0 ? (
+            <div className="px-[14px] py-3 text-body4 text-gray-500">
+              No notifications yet.
+            </div>
+          ) : (
+            renderedItems.map((item) =>
+              renderNotificationItem({ ...item, compact: true }),
+            )
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

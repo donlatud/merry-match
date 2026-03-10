@@ -16,7 +16,7 @@ function notificationToItem(n) {
   const typeLower = n.type?.toLowerCase() ?? "liked";
   let href = "/notifications";
   if (n.type === "MESSAGE" && n.room_id) {
-    href = `/chat?room_id=${n.room_id}`;
+    href = `/chat/${n.room_id}`;
   } else if (n.type === "MATCHED") {
     href = "/chat";
   } else if (n.actor_id) {
@@ -29,9 +29,9 @@ function notificationToItem(n) {
     name: n.actor?.full_name || "Someone",
     messageCount:
       n.type === "MESSAGE"
-        ? (n.data && typeof n.data === "object" && "messageCount" in n.data
-            ? n.data.messageCount
-            : 1)
+        ? n.data && typeof n.data === "object" && "messageCount" in n.data
+          ? n.data.messageCount
+          : 1
         : undefined,
     profileImageUrl: n.actor?.images?.[0]?.image_url ?? null,
     createdAt: n.created_at,
@@ -52,7 +52,8 @@ export const notificationsService = {
    */
   async getItems(userId, query = {}) {
     const limit = parseLimit(query?.limit, 4);
-    const profileId = await notificationRepository.findProfileIdByUserId(userId);
+    const profileId =
+      await notificationRepository.findProfileIdByUserId(userId);
 
     if (!profileId) {
       return { items: [] };
@@ -60,13 +61,12 @@ export const notificationsService = {
 
     const rows = await notificationRepository.findManyByRecipientId(
       profileId,
-      limit
+      limit,
     );
     const items = rows
       .map(notificationToItem)
       .filter(
-        (item) =>
-          !(item.type === "message" && (item.messageCount ?? 0) === 0)
+        (item) => !(item.type === "message" && (item.messageCount ?? 0) === 0),
       );
     return { items };
   },
@@ -76,15 +76,15 @@ export const notificationsService = {
    * body: { action: "seen" | "read-all" } | { id } | { roomId }
    */
   async patch(userId, body) {
-    const profileId = await notificationRepository.findProfileIdByUserId(userId);
+    const profileId =
+      await notificationRepository.findProfileIdByUserId(userId);
     if (!profileId) {
       return { ok: true };
     }
 
     let parsed = {};
     try {
-      parsed =
-        typeof body === "string" ? JSON.parse(body) : body || {};
+      parsed = typeof body === "string" ? JSON.parse(body) : body || {};
     } catch {
       return { error: "Invalid JSON body", status: 400 };
     }
@@ -110,7 +110,7 @@ export const notificationsService = {
       await notificationRepository.updateReadByRoomId(
         profileId,
         parsed.roomId,
-        now
+        now,
       );
       return { ok: true };
     }
