@@ -86,7 +86,7 @@ export default function MemberNavBar({ onLogout }) {
             <img
               src="/merry_icon/icon-chat.svg"
               alt=""
-              className="w-[14px] h-[14px]"
+              className="w-3.5 h-3.5"
             />
           </Link>
 
@@ -99,7 +99,7 @@ export default function MemberNavBar({ onLogout }) {
             <img
               src="/merry_icon/icon-notification.svg"
               alt=""
-              className="w-[14px] h-[14px]"
+              className="w-3.5 h-3.5"
             />
           </Link>
         </div>

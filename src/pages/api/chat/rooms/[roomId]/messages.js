@@ -10,33 +10,24 @@ const supabase = createClient(
 export default async function handler(req, res) {
   const { roomId } = req.query;
 
-  // ── [1] AUTH ──────────────────────────────────────────────────
   const token = req.headers.authorization?.replace("Bearer ", "");
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   if (authError || !user) return res.status(401).json({ error: "Unauthorized" });
 
-  const myProfile = await prisma.profile.findUnique({
-    where: { user_id: user.id },
-  });
+  const myProfile = await prisma.profile.findUnique({ where: { user_id: user.id } });
   if (!myProfile) return res.status(404).json({ error: "Profile not found" });
 
-  // ── [2] ตรวจสอบว่า user อยู่ใน room นี้จริง ──────────────────
-  const room = await prisma.chatRoom.findUnique({
-    where: { id: roomId },
-  });
+  const room = await prisma.chatRoom.findUnique({ where: { id: roomId } });
   if (!room) return res.status(404).json({ error: "Room not found" });
 
-  const isInRoom =
-    room.profile1_id === myProfile.id || room.profile2_id === myProfile.id;
+  const isInRoom = room.profile1_id === myProfile.id || room.profile2_id === myProfile.id;
   if (!isInRoom) return res.status(403).json({ error: "Forbidden" });
 
-  // ── GET — ดึง messages ────────────────────────────────────────
+  // ── GET ───────────────────────────────────────────────────────
   if (req.method === "GET") {
     try {
-      const { cursor, limit = 30 } = req.query;
-
       const messages = await prisma.message.findMany({
         where: { room_id: roomId },
         include: {
@@ -45,23 +36,16 @@ export default async function handler(req, res) {
           },
         },
         orderBy: { created_at: "asc" },
-        take: Number(limit),
-        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       });
 
-      // mark as read — message ที่ไม่ใช่ของเรา
-      await prisma.message.updateMany({
-        where: {
-          room_id: roomId,
-          sender_id: { not: myProfile.id },
-          is_read: false,
-        },
-        data: { is_read: true },
-      });
+      // ✅ ลบ updateMany ออกจาก GET — ไม่ auto mark as read
+      // การ mark as read ทำผ่าน PATCH เท่านั้น (เรียกตอน user เปิดห้องจริงๆ)
 
       const formatted = messages.map((m) => ({
         id: m.id,
         content: m.content,
+        messageType: m.message_type,
+        imageUrls: m.image_urls ?? [],
         senderId: m.sender_id,
         senderName: m.sender.full_name,
         senderImage: m.sender.images[0]?.image_url ?? null,
@@ -72,22 +56,30 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ success: true, data: formatted });
     } catch (error) {
-      console.error("[GET /api/chat/rooms/[roomId]/messages]", error);
+      console.error("[GET messages]", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   }
 
-  // ── POST — ส่ง message ────────────────────────────────────────
+  // ── POST ──────────────────────────────────────────────────────
   if (req.method === "POST") {
     try {
-      const { content } = req.body;
-      if (!content?.trim()) return res.status(400).json({ error: "Content is required" });
+      const { content, messageType = "text", imageUrls = [] } = req.body;
+
+      if (messageType === "text" && !content?.trim()) {
+        return res.status(400).json({ error: "Content is required" });
+      }
+      if (messageType === "image" && imageUrls.length === 0) {
+        return res.status(400).json({ error: "imageUrls is required" });
+      }
 
       const message = await prisma.message.create({
         data: {
           room_id: roomId,
           sender_id: myProfile.id,
-          content: content.trim(),
+          content: content?.trim() ?? "",
+          message_type: messageType,
+          image_urls: imageUrls,
         },
         include: {
           sender: {
@@ -101,6 +93,8 @@ export default async function handler(req, res) {
         data: {
           id: message.id,
           content: message.content,
+          messageType: message.message_type,
+          imageUrls: message.image_urls ?? [],
           senderId: message.sender_id,
           senderName: message.sender.full_name,
           senderImage: message.sender.images[0]?.image_url ?? null,
@@ -110,27 +104,26 @@ export default async function handler(req, res) {
         },
       });
     } catch (error) {
-      console.error("[POST /api/chat/rooms/[roomId]/messages]", error);
+      console.error("[POST messages]", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   }
 
-  // ── PATCH — mark messages as read ────────────────────────────
-  // เรียกเมื่อ partner เปิดห้องแชทหรือ scroll มาเห็น message
+  // ── PATCH: mark as read ───────────────────────────────────────
+  // ✅ เรียกเฉพาะตอน user เปิดห้องแชทจริงๆ
   if (req.method === "PATCH") {
     try {
       await prisma.message.updateMany({
         where: {
           room_id: roomId,
-          sender_id: { not: myProfile.id }, // mark เฉพาะ message ของอีกฝ่าย
+          sender_id: { not: myProfile.id },
           is_read: false,
         },
         data: { is_read: true },
       });
-
       return res.status(200).json({ success: true });
     } catch (error) {
-      console.error("[PATCH /api/chat/rooms/[roomId]/messages]", error);
+      console.error("[PATCH messages]", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   }
