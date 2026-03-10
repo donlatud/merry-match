@@ -22,6 +22,7 @@ import React from "react";
  * - type ("primary" | "secondary"): กำหนดว่าปุ่มไหนเป็นปุ่มหลัก (แดงเต็ม)
  *   - "primary" = ปุ่มซ้ายเป็นปุ่มหลัก (แดงเต็ม), ปุ่มขวาเป็นปุ่มรอง (แดงอ่อน)
  *   - "secondary" = ปุ่มขวาเป็นปุ่มหลัก (แดงเต็ม), ปุ่มซ้ายเป็นปุ่มรอง (แดงอ่อน)
+ * - fullWidthButtons (boolean): ถ้า true ปรับปุ่มให้กว้างเต็ม (flex-1) บน desktop
  *
  * ตัวอย่าง
  * -------
@@ -55,12 +56,17 @@ const Modal = ({
   onLeftClick,
   onRightClick,
   type = "primary",
+  fullWidthButtons = false,
 }) => {
   if (!open) return null;
 
   const leftIsPrimary = type === "primary";
-  const leftClass = leftIsPrimary ? btnPrimary : btnSecondary;
-  const rightClass = leftIsPrimary ? btnSecondary : btnPrimary;
+  const leftClass =
+    (leftIsPrimary ? btnPrimary : btnSecondary) +
+    (fullWidthButtons ? " sm:w-full sm:flex-1" : "");
+  const rightClass =
+    (leftIsPrimary ? btnSecondary : btnPrimary) +
+    (fullWidthButtons ? " sm:w-full sm:flex-1" : "");
 
   return (
     <div

@@ -18,7 +18,7 @@ export const IndicatorList = ({
       <button
         type="button"
         onClick={handleClick}
-        className={`flex ${mobileWidthClass} cursor-pointer items-center gap-2 rounded-[16px] border border-purple-500 bg-utility-bg-main px-2 py-2 text-left shadow-button lg:w-auto lg:min-w-0 lg:flex-1 lg:px-4 lg:py-4 transition hover:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2`}
+        className={`flex ${mobileWidthClass} cursor-pointer items-center gap-2 rounded-[16px] border border-purple-500 bg-utility-bg-main px-2 py-2 text-left shadow-button h-[56px] lg:w-auto lg:min-w-0 lg:flex-1 lg:px-4 lg:py-4 lg:h-[80px] transition hover:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2`}
         aria-current="step"
         aria-label={`Step ${step} of ${totalSteps}: ${label}. Current step.`}
       >
@@ -41,9 +41,9 @@ export const IndicatorList = ({
     <button
       type="button"
       onClick={handleClick}
-      className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-[12px] border border-gray-300 bg-utility-bg-main p-1.5 transition hover:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 lg:size-[56px] lg:rounded-[16px] lg:p-2"
+      className="flex size-[56px] shrink-0 cursor-pointer items-center justify-center rounded-[12px] border border-gray-300 bg-utility-bg-main p-1.5 transition hover:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 lg:size-[80px] lg:rounded-[16px] lg:p-2"
     >
-      <span className="flex size-8 items-center justify-center rounded-[8px] bg-gray-200 text-body4 font-extrabold text-gray-400 lg:size-10 lg:rounded-[12px] lg:text-body3">
+      <span className="flex size-10 items-center justify-center rounded-[8px] bg-gray-200 text-body4 font-extrabold text-gray-400 lg:size-12 lg:rounded-[12px] lg:text-body3">
         {step}
       </span>
     </button>

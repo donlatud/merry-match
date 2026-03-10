@@ -2,6 +2,7 @@ import { supabase } from "@/providers/supabase.provider";
 import { fi, tr } from "date-fns/locale";
 import { useState, createContext, useEffect } from "react";
 import { useRouter } from "next/router";
+import axios from "axios";
 
 export const AuthContext = createContext(null);
 

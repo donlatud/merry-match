@@ -1,12 +1,16 @@
 // src/services/matching/swipe.service.js
 import { profileRepository } from "@/repositories/matching/profile.repository";
 import { swipeRepository } from "@/repositories/matching/swipe.repository";
+import { assertActiveMembershipForUser } from "@/services/membership/membershipService";
 
 export const swipeService = {
   /**
    * Business Logic สำหรับการสร้าง Swipe
    */
   async createSwipe({ userId, receiverId, status }) {
+    // [0] ตรวจสอบสิทธิ์ Merry Membership (ต้อง ACTIVE และยังไม่หมดอายุ)
+    await assertActiveMembershipForUser(userId);
+
     // [1] ดึงโปรไฟล์ของ User
     const myProfile = await profileRepository.findByUserId(userId);
 

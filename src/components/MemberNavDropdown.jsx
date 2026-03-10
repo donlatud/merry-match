@@ -48,7 +48,7 @@ export default function MemberNavDropdown({
     return (
       <div className="fixed right-0 z-[100] flex w-full h-full flex-col gap-4 rounded-[4px] bg-utility-white px-4 py-6 shadow-[4px_4px_16px_0px_#00000014]">
         <Link
-          href="/merry-package"
+          href="/payment"
           className="flex items-center justify-center gap-[6px] rounded-[99px] bg-utility-linear px-6 py-[10px] cursor-pointer"
           onClick={onClose}
         >
@@ -97,7 +97,7 @@ export default function MemberNavDropdown({
       className="absolute right-0 top-full z-50 mt-2 py-2 gap-2 flex flex-col w-[198px] rounded-[16px] bg-utility-white shadow-button"
     >
       <Link
-        href="/merry-package"
+        href="/payment"
         className="flex items-center justify-center gap-[6px] rounded-[99px] mx-2 bg-utility-linear px-6 py-[10px] cursor-pointer"
         onClick={onClose}
       >
