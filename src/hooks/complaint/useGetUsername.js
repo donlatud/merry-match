@@ -9,7 +9,7 @@ export function useGetUsername() {
   useEffect(() => {
     async function fetchUsername() {
       try {
-        const res = await axios.get("/api/complaints/username");
+        const res = await axios.get("/api/admin/complaints/username");
         setData(res.data);
       } catch (err) {
         setError(err);

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import InputBar from "@/components/commons/input/InputBar";
+import PasswordInput from "@/components/commons/input/PasswordInput";
 import { useAuth } from "@/hooks/login/useAuth";
 import { PrimaryButton } from "@/components/commons/button/PrimaryButton";
 import { merryToast } from "@/components/commons/toast/MerryToast";
@@ -21,7 +22,7 @@ function LoginPage() {
     e.preventDefault();
     setError("");
 
-    if (!identifier || !password) {
+    if (!identifier || !password || identifier === "admin") {
       const msg = "Username/email and password are required";
       setError(msg);
       merryToast.error("Missing information!", msg, <ExclamationCircleIcon className="size-10! text-red-400" />);
@@ -89,7 +90,7 @@ function LoginPage() {
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   placeholder="Enter Username or Email"
-                  className=""
+                  className="h-12"
                 />
               </div>
 
@@ -97,20 +98,12 @@ function LoginPage() {
               <div>
                 <label className="block text-sm mb-1">Password</label>
                 <div className="relative mb-4">
-                  <InputBar
-                    type={showPassword ? "text" : "password"}
+                  <PasswordInput
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter password"
-                    className=""
+                    className="h-12"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-500"
-                  >
-                    {showPassword ? "Hide" : "Show"}
-                  </button>
                 </div>
               </div>
               {/* Error */}

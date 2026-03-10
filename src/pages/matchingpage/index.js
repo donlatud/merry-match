@@ -13,6 +13,7 @@ import LeftSidebar from "@/components/matching/LeftSidebar";
 import DesktopCardView from "@/components/matching/DesktopCardView";
 import MerryMatchModal from "@/components/matching/MerryMatchModal";
 import NavBar from "@/components/NavBar";
+import { apiClient } from "@/lib/apiClient";
 
 // ── Animation Variants ────────────────────────────────────────
 const pageVariants = {
@@ -56,12 +57,16 @@ export default function MatchingPage() {
   const [matchModalOpen, setMatchModalOpen] = useState(false);
   const [matchedProfile, setMatchedProfile] = useState(null);
 
-  // ตรวจสอบสถานะการเปิด Chat บน Mobile จาก URL
-  const isMobileChatOpen = searchParams.get("showChat") === "true";
+  // ── helper ดึง token จาก localStorage ────────────────────────
+  // const getToken = () => {
+  //   if (typeof window === "undefined") return null;
+  //   return localStorage.getItem("token");
+  // };
 
   // ── Fetch Profiles ────────────────────────────────────────────
   const fetchProfiles = useCallback(async (filters = {}) => {
-    if (authLoading || !user) return;
+    // const token = getToken();
+    // if (!token) return;
 
     setLoading(true);
     try {
@@ -78,11 +83,10 @@ console.log(token);
       }
 
       const queryString = new URLSearchParams(params).toString();
-      const res = await fetch(`/api/matching/profiles?${queryString}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { data: result } = await apiClient.get(
+        `/matching/profiles?${queryString}`,
+      );
 
-      const result = await res.json();
       if (result.profiles) {
         setProfiles(result.profiles);
         setMerryLimit(result.swipeLimit ?? 20);
@@ -102,16 +106,16 @@ console.log(token);
 
   // ── Fetch Matches ─────────────────────────────────────────────
   const fetchMatches = useCallback(async () => {
-    if (!myProfileId || !user) return;
-    
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+    if (!myProfileId) return;
+    // const token = getToken();
+    // if (!token) return;
 
-      const res = await fetch(`/api/matching/matches?profileId=${myProfileId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const result = await res.json();
+    try {
+      const { data: result } = await apiClient.get(
+        `/matching/matches?profileId=${myProfileId}`,
+      );
+
+      if (result.success) setMatches(result.data);
       if (result.success) setMatches(result.data);
     } catch (err) {
       console.error("Failed to fetch matches:", err);
@@ -126,7 +130,8 @@ console.log(token);
 
   // ── Actions ──────────────────────────────────────────────────
   const handleSwipe = async (direction, profileId) => {
-    if (!user) return;
+    // const token = getToken();
+    // if (!token) return;
 
     const status = direction === "right" ? "LIKE" : "DISLIKE";
     const swipedProfile = profiles.find((p) => p.id === profileId);
@@ -135,19 +140,11 @@ console.log(token);
     if (status === "LIKE") setRemainingCount((prev) => Math.max(prev - 1, 0));
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      const res = await fetch("/api/matching/swipe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ receiverId: profileId, status }),
+      const { data } = await apiClient.post("/matching/swipe", {
+        receiverId: profileId,
+        status,
       });
 
-      const data = await res.json();
       if (data.isMatch) {
         setTimeout(() => {
           setMatchedProfile(swipedProfile ?? null);

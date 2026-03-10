@@ -15,7 +15,7 @@ export default function EditPackage() {
 
     async function fetchPackage() {
       try {
-        const res = await fetch(`/api/merry-package/${id}`);
+        const res = await fetch(`/api/admin/merry-package/${id}`);
         if (!res.ok) throw new Error("Failed to fetch package");
 
         const json = await res.json();
@@ -32,7 +32,7 @@ export default function EditPackage() {
 
   async function handleUpdate(updatedData) {
     try {
-      const res = await fetch(`/api/merry-package/${id}`, {
+      const res = await fetch(`/api/admin/merry-package/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedData),
@@ -48,7 +48,7 @@ export default function EditPackage() {
 
   async function handleDelete(id) {
     try {
-      const res = await fetch(`/api/merry-package/${id}`, {
+      const res = await fetch(`/api/admin/merry-package/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });

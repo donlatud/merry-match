@@ -14,6 +14,7 @@ function ComplaintPage() {
   const [issue, setIssue] = useState("");
   const [desc, setDesc] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const { createIssue } = usePostComplaint();
 
@@ -32,6 +33,7 @@ function ComplaintPage() {
       return;
     }
     try {
+      setIsLoading(true)
       const data = { issue, description: desc };
       const success = await createIssue(data);
       console.log(success);
@@ -49,6 +51,8 @@ function ComplaintPage() {
         "Create issue success!",
         <CheckCircleIcon className="size-10! text-green-500" />,
       );
+      setIssue("")
+      setDesc("")
     } catch (error) {
       console.log(error);
       const msg = error.message;
@@ -58,6 +62,9 @@ function ComplaintPage() {
         msg,
         <ExclamationCircleIcon className="size-10! text-red-400" />,
       );
+    }
+    finally{
+      setIsLoading(false)
     }
   };
 
@@ -91,7 +98,8 @@ function ComplaintPage() {
                   value={issue}
                   onChange={(e) => setIssue(e.target.value)}
                   placeholder="Enter your issue."
-                  className=""
+                  maxLength={30}
+                  error={error}
                 />
               </div>
 
@@ -104,7 +112,7 @@ function ComplaintPage() {
                     value={desc}
                     onChange={(e) => setDesc(e.target.value)}
                     placeholder="Please describe ..."
-                    className="
+                    className={`
                             h-49 
                             w-full 
                             border 
@@ -115,10 +123,12 @@ function ComplaintPage() {
                             border-gray-400
                             outline-none
                             focus:border-purple-500
-                            placeholder:text-gray-600"
+                            placeholder:text-gray-600
+                            ${error ? "border-red-500" : "border-gray-400"}`}
                     rows={4}
                     cols={40}
                     maxLength={100}
+                    error={error}
                   />
                 </div>
               </div>
@@ -128,7 +138,8 @@ function ComplaintPage() {
               {/* Submit */}
               <PrimaryButton
                 type="submit"
-                className="w-25.5 bg-red-500 text-white rounded-full py-3 mb-4"
+                className="lg:w-25.5 bg-red-500 text-white rounded-full py-3 mb-4"
+                disabled={isLoading}
               >
                 Submit
               </PrimaryButton>

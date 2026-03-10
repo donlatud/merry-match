@@ -80,47 +80,52 @@ export default function PackageForm({
       <hr className="shrink-0" />
 
       {/* Gray area */}
-      <div className="flex-1 bg-gray-100 flex items-center justify-center">
-        <div className="relative w-fit gap-2">
-          <form className="bg-white px-25 pt-10 pb-15 w-270 flex flex-col gap-10 rounded-3xl">
+      <div className="flex-1 bg-gray-100 px-15 py-6">
+        <div className="relative w-full gap-2">
+          <form className="bg-white px-25 pt-10 pb-15 w-full flex flex-col gap-10 rounded-3xl">
             <div className="flex gap-10">
-              <InputBar
-                value={form.name}
-                onChange={handleInputChange("name")}
-                label="Package Name *"
-              />
-              <NumberBar
-                value={form.limit_matching}
-                onChange={handleInputChange("limit_matching")}
-                min={0}
-                label="Merry Limit *"
-              />
+              <div className="flex flex-col gap-10 w-full">
+                <InputBar
+                  value={form.name}
+                  onChange={handleInputChange("name")}
+                  label="Package Name *"
+                  className="w-full"
+                />
+
+                <InputBar
+                  type="number"
+                  min={0}
+                  value={form.price}
+                  onChange={handleInputChange("price")}
+                  label="Package Price *"
+                  className="w-full"
+                />
+              </div>
+
+              <div className="flex flex-col gap-10 w-full">
+                <NumberBar
+                  value={form.limit_matching}
+                  onChange={handleInputChange("limit_matching")}
+                  min={0}
+                  label="Merry Limit *"
+                  className="w-full"
+                />
+
+                <ImageUploadSection
+                  imageFile={imageFile}
+                  setImageFile={setImageFile}
+                  iconUrl={form.icon_url}
+                  setIconUrl={(url) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      icon_url: url,
+                    }))
+                  }
+                  inputRef={inputRef}
+                  supabase={supabase}
+                />
+              </div>
             </div>
-
-            <div className="flex gap-10">
-              <InputBar
-                type="number"
-                min={0}
-                value={form.price}
-                onChange={handleInputChange("price")}
-                label="Package Price *"
-              />
-
-              <ImageUploadSection
-                imageFile={imageFile}
-                setImageFile={setImageFile}
-                iconUrl={form.icon_url}
-                setIconUrl={(url) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    icon_url: url,
-                  }))
-                }
-                inputRef={inputRef}
-                supabase={supabase}
-              />
-            </div>
-
             <hr />
 
             <PackageDetailsSection
@@ -137,9 +142,12 @@ export default function PackageForm({
             />
           </form>
           {deletePackage && (
-              <button onClick={()=>setOpen(true)} className="absolute right-0 top-full mt-2 text-[16px] text-gray-700 cursor-pointer">
-                Delete Package
-              </button>
+            <button
+              onClick={() => setOpen(true)}
+              className="absolute right-0 top-full mt-2 text-[16px] text-gray-700 cursor-pointer"
+            >
+              Delete Package
+            </button>
           )}
         </div>
       </div>
@@ -150,10 +158,12 @@ export default function PackageForm({
         message="Do you sure to delete this Package?"
         leftText="Yes, I want to delete"
         rightText="No, I don't want"
-        onLeftClick={ async () => {
-    if (deletePackage) {
-      await deletePackage();   // เรียกฟังก์ชันจาก parent
-    } setOpen(false)}}
+        onLeftClick={async () => {
+          if (deletePackage) {
+            await deletePackage(); // เรียกฟังก์ชันจาก parent
+          }
+          setOpen(false);
+        }}
         onRightClick={() => {
           setOpen(false);
         }}
