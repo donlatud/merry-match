@@ -79,50 +79,6 @@ model ProfileHobby {
   @@schema("public")
 }
 
-// ตาราง Hobby (master) เก็บรายการ hobby ทั้งระบบ
-model Hobby {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-
-  profileHobbies ProfileHobby[]
-
-  @@map("hobbies")
-}
-
-// ตาราง ProfileHobby เชื่อม Profile กับ Hobby (profile_id + hobby_id เป็น primary key)
-model ProfileHobby {
-  profile_id String
-  hobby_id   Int
-
-  profile Profile @relation(fields: [profile_id], references: [id], onDelete: Cascade)
-  hobby   Hobby   @relation(fields: [hobby_id], references: [id], onDelete: Cascade)
-
-  @@id([profile_id, hobby_id])
-  @@map("profile_hobbies")
-}
-
-// ตาราง Hobby (master) เก็บรายการ hobby ทั้งระบบ
-model Hobby {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-
-  profileHobbies ProfileHobby[]
-
-  @@map("hobbies")
-}
-
-// ตาราง ProfileHobby เชื่อม Profile กับ Hobby (profile_id + hobby_id เป็น primary key)
-model ProfileHobby {
-  profile_id String
-  hobby_id   Int
-
-  profile Profile @relation(fields: [profile_id], references: [id], onDelete: Cascade)
-  hobby   Hobby   @relation(fields: [hobby_id], references: [id], onDelete: Cascade)
-
-  @@id([profile_id, hobby_id])
-  @@map("profile_hobbies")
-}
-
 model ProfileImage {
   id         Int     @id @default(autoincrement())
   profile_id String
@@ -267,12 +223,14 @@ model ChatRoom {
 }
 
 model Message {
-  id         String   @id @default(uuid())  // text
-  room_id    String                          // text
-  sender_id  String                          // text
-  content    String   @db.Text
-  is_read    Boolean  @default(false)
-  created_at DateTime @default(now())
+  id           String   @id @default(uuid())
+  room_id      String
+  sender_id    String
+  content      String?  @db.Text   // ✅ เปลี่ยนเป็น optional
+  message_type String   @default("text")
+  image_urls   String[] @default([])
+  is_read      Boolean  @default(false)
+  created_at   DateTime @default(now())
 
   room   ChatRoom @relation(fields: [room_id], references: [id], onDelete: Cascade)
   sender Profile  @relation("SentMessages", fields: [sender_id], references: [id], onDelete: Cascade)
