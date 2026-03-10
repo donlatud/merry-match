@@ -73,6 +73,10 @@ export const swipeController = {
       return res.status(400).json({ error: error.message });
     }
 
+    if (error.message === "MEMBERSHIP_REQUIRED" || error.statusCode === 403) {
+      return res.status(403).json({ error: "Membership required" });
+    }
+
     // Default Server Error
     return res.status(500).json({ error: "Internal server error" });
   }

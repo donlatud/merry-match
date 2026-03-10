@@ -16,3 +16,15 @@ export const findUserByEmail = async (email) => {
     },
   });
 };
+
+export const findUserById = async (id) => {
+  return prisma.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      role: true,
+    },
+  });
+};
