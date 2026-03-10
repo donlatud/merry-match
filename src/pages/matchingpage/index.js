@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useContext } from "react";
+import { useState, useCallback, useEffect, useContext, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AuthContext } from "@/contexts/login/AuthContext";
@@ -56,7 +56,9 @@ export default function MatchingPage() {
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [matchModalOpen, setMatchModalOpen] = useState(false);
   const [matchedProfile, setMatchedProfile] = useState(null);
-
+  const refetchRoomsRef = useRef(null);
+  // เพิ่มบรรทัดนี้ใต้ const router = useRouter();
+  const isMobileChatOpen = searchParams.get("showChat") === "true";
   // ── helper ดึง token จาก localStorage ────────────────────────
   // const getToken = () => {
   //   if (typeof window === "undefined") return null;
@@ -64,41 +66,46 @@ export default function MatchingPage() {
   // };
 
   // ── Fetch Profiles ────────────────────────────────────────────
-  const fetchProfiles = useCallback(async (filters = {}) => {
-    // const token = getToken();
-    // if (!token) return;
+  const fetchProfiles = useCallback(
+    async (filters = {}) => {
+      // const token = getToken();
+      // if (!token) return;
 
-    setLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-console.log(token);
+      setLoading(true);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const token = session?.access_token;
 
-      const params = { ...filters };
-      if (Array.isArray(params.genders)) params.genders = params.genders.join(",");
-      if (params.ageRange) {
-        params.ageMin = params.ageRange[0];
-        params.ageMax = params.ageRange[1];
-        delete params.ageRange;
+        const params = { ...filters };
+        if (Array.isArray(params.genders))
+          params.genders = params.genders.join(",");
+        if (params.ageRange) {
+          params.ageMin = params.ageRange[0];
+          params.ageMax = params.ageRange[1];
+          delete params.ageRange;
+        }
+
+        const queryString = new URLSearchParams(params).toString();
+        const { data: result } = await apiClient.get(
+          `/matching/profiles?${queryString}`,
+        );
+
+        if (result.profiles) {
+          setProfiles(result.profiles);
+          setMerryLimit(result.swipeLimit ?? 20);
+          setRemainingCount(result.swipeRemaining ?? 20);
+          setMyProfileId(result.myProfileId);
+        }
+      } catch (error) {
+        console.error("Failed to fetch profiles:", error);
+      } finally {
+        setLoading(false);
       }
-
-      const queryString = new URLSearchParams(params).toString();
-      const { data: result } = await apiClient.get(
-        `/matching/profiles?${queryString}`,
-      );
-
-      if (result.profiles) {
-        setProfiles(result.profiles);
-        setMerryLimit(result.swipeLimit ?? 20);
-        setRemainingCount(result.swipeRemaining ?? 20);
-        setMyProfileId(result.myProfileId);
-      }
-    } catch (error) {
-      console.error("Failed to fetch profiles:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [authLoading, user]);
+    },
+    [authLoading, user],
+  );
 
   useEffect(() => {
     fetchProfiles();
@@ -151,6 +158,7 @@ console.log(token);
           setMatchModalOpen(true);
         }, 800);
         fetchMatches();
+        refetchRoomsRef.current?.();
       }
     } catch (error) {
       console.error("Swipe error:", error);
@@ -175,7 +183,10 @@ console.log(token);
     return null;
   }
 
-  const merryLimitDisplay = merryLimit === "Unlimited" ? "Unlimited" : `${remainingCount}/${merryLimit}`;
+  const merryLimitDisplay =
+    merryLimit === "Unlimited"
+      ? "Unlimited"
+      : `${remainingCount}/${merryLimit}`;
 
   return (
     <div className="font-sans h-screen flex flex-col overflow-hidden bg-utility-bg relative">
@@ -200,13 +211,29 @@ console.log(token);
             className="fixed inset-0 z-150 bg-white lg:hidden flex flex-col"
           >
             <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h2 className="text-body2 font-bold text-gray-900">Matches & Chats</h2>
-              <button onClick={closeMobileChat} className="p-2 hover:bg-gray-100 rounded-full">
-                <img src="/merry_icon/icon-close.svg" alt="Close" className="w-6 h-6" />
+              <h2 className="text-body2 font-bold text-gray-900">
+                Matches & Chats
+              </h2>
+              <button
+                onClick={closeMobileChat}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <img
+                  src="/merry_icon/icon-close.svg"
+                  alt="Close"
+                  className="w-6 h-6"
+                />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-4">
-              <LeftSidebar currentProfileId={myProfileId} matches={matches} loading={matchesLoading} />
+              <LeftSidebar
+                currentProfileId={myProfileId}
+                matches={matches}
+                loading={matchesLoading}
+                onRefetchRooms={(fn) => {
+                  refetchRoomsRef.current = fn;
+                }}
+              />
             </div>
           </motion.aside>
         )}
@@ -226,32 +253,64 @@ console.log(token);
               <p className="text-body4 text-gray-500">Finding new people...</p>
             </div>
           ) : (
-            <CardStack profiles={profiles} onSwipe={handleSwipe} merryDisabled={remainingCount <= 0} />
+            <CardStack
+              profiles={profiles}
+              onSwipe={handleSwipe}
+              merryDisabled={remainingCount <= 0}
+            />
           )}
         </div>
 
         <div className="mt-auto flex items-center justify-between px-6 py-5 bg-utility-bg shrink-0">
-          <button onClick={() => setFilterOpen(true)} className="flex items-center gap-2 text-gray-700 hover:text-red-400">
+          <button
+            onClick={() => setFilterOpen(true)}
+            className="flex items-center gap-2 text-gray-700 hover:text-red-400"
+          >
             <img src="/merry_icon/icon-filter.svg" alt="" className="w-5 h-5" />
             <span className="text-body4 font-semibold">Filter</span>
           </button>
           <div className="flex items-center gap-1 text-body4 font-semibold text-gray-500">
-            Merry limit today <span className="text-red-400 font-bold ml-1">{merryLimitDisplay}</span>
+            Merry limit today{" "}
+            <span className="text-red-400 font-bold ml-1">
+              {merryLimitDisplay}
+            </span>
           </div>
         </div>
-        <FilterSheet open={filterOpen} onOpenChange={setFilterOpen} onSearch={(f) => fetchProfiles(f)} />
+        <FilterSheet
+          open={filterOpen}
+          onOpenChange={setFilterOpen}
+          onSearch={(f) => fetchProfiles(f)}
+        />
       </motion.div>
 
       {/* ── DESKTOP LAYOUT ── */}
-      <motion.div className="hidden lg:flex flex-1 overflow-hidden" variants={pageVariants} initial="hidden" animate="visible">
+      <motion.div
+        className="hidden lg:flex flex-1 overflow-hidden"
+        variants={pageVariants}
+        initial="hidden"
+        animate="visible"
+      >
         <div className="flex flex-1 overflow-hidden mx-auto w-full">
           {/* Left Sidebar */}
-          <motion.aside variants={slideLeft} className="w-80 shrink-0 overflow-hidden px-6 py-8 border-r bg-utility-bg-main">
-            <LeftSidebar currentProfileId={myProfileId} matches={matches} loading={matchesLoading} />
+          <motion.aside
+            variants={slideLeft}
+            className="w-80 shrink-0 overflow-hidden px-6 py-8 border-r bg-utility-bg-main"
+          >
+            <LeftSidebar
+              currentProfileId={myProfileId}
+              matches={matches}
+              loading={matchesLoading}
+              onRefetchRooms={(fn) => {
+                refetchRoomsRef.current = fn;
+              }} // ✅
+            />
           </motion.aside>
 
           {/* Center Content */}
-          <motion.main variants={slideUp} className="flex-1 flex flex-col items-center overflow-visible px-6 py-8">
+          <motion.main
+            variants={slideUp}
+            className="flex-1 flex flex-col items-center overflow-visible px-6 py-8"
+          >
             <div className="w-full flex-1 overflow-hidden">
               {loading ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3">
@@ -259,17 +318,26 @@ console.log(token);
                   <p className="text-body4 text-white/60">Finding matches...</p>
                 </div>
               ) : (
-                <DesktopCardView profiles={profiles} onSwipe={handleSwipe} merryDisabled={remainingCount <= 0} />
+                <DesktopCardView
+                  profiles={profiles}
+                  onSwipe={handleSwipe}
+                  merryDisabled={remainingCount <= 0}
+                />
               )}
             </div>
             <div className="mt-auto pt-4 pb-2 flex items-center gap-1 text-body4 font-semibold">
               <span className="text-white/60">Merry limit today</span>
-              <span className="text-red-400 font-bold ml-1">{merryLimitDisplay}</span>
+              <span className="text-red-400 font-bold ml-1">
+                {merryLimitDisplay}
+              </span>
             </div>
           </motion.main>
 
           {/* Right Filter */}
-          <motion.aside variants={slideRight} className="w-80 shrink-0 overflow-y-auto px-6 py-8 border-l bg-utility-bg-main">
+          <motion.aside
+            variants={slideRight}
+            className="w-80 shrink-0 overflow-y-auto px-6 py-8 border-l bg-utility-bg-main"
+          >
             <FilterPanel onSearch={(f) => fetchProfiles(f)} />
           </motion.aside>
         </div>
