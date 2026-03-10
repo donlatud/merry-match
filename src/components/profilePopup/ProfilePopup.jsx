@@ -233,7 +233,9 @@ export function ProfilePopup({
               <div className="absolute z-10 left-1/2 top-71 lg:top-112 -translate-x-1/2 flex gap-6 ">
                 {leftButton ?? (
                   <ButtonPass
-                    className="w-15 h-15 [&_img]:w-10 [&_img]:h-10 shadow-button cursor-not-allowed pointer-events-none"
+                    className="w-15 h-15 disabled:opacity-40 disabled:cursor-not-allowed [&_img]:w-10 [&_img]:h-10 shadow-button"
+                    onClick={leftButton}
+                    
                     disabled
                     style={{
                       filter: "none",
@@ -244,13 +246,15 @@ export function ProfilePopup({
                 )}
                 {rightButton ?? (
                   <ButtonMerry
-                    className="w-15 h-15 [&_img]:w-12 [&_img]:h-10 shadow-button cursor-not-allowed pointer-events-none"
+
                     disabled
                     style={{
                       filter: "none",
                       opacity: 1,
                       color: "inherit",
                     }}
+                    className="w-15 h-15 disabled:opacity-40 disabled:cursor-not-allowed [&_img]:w-12 [&_img]:h-10 shadow-button"
+                    onClick={leftButton}
                   />
                 )}
               </div>
