@@ -8,7 +8,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { apiClient } from "@/lib/apiClient";
 import { supabase } from "@/providers/supabase.provider";
 
-
 export default function MemberNavBar({ onLogout }) {
   const { user } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
@@ -17,10 +16,20 @@ export default function MemberNavBar({ onLogout }) {
   const [profileImageUrl, setProfileImageUrl] = useState(null);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [myProfileId, setMyProfileId] = useState(null);
+  const [me, setMe] = useState(null);
+  const [membershipResolved, setMembershipResolved] = useState(false);
   const mobileNotifRef = useRef(null);
   const desktopNotifRef = useRef(null);
   const profileDropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
+  const hasActiveMembership = Boolean(
+    me?.subscription?.status === "ACTIVE" && me?.subscription?.package,
+  );
+  const isPremiumMembership = Boolean(
+    hasActiveMembership &&
+    String(me?.subscription?.package?.name ?? "").toLowerCase() === "premium",
+  );
+  const membershipHref = hasActiveMembership ? "/membership" : "/payment";
 
   // Badge ring: ใช้ seen_at — โชว์ ring เมื่อมี noti ที่ read_at null และ (seen_at null หรือ created_at > seen_at)
   const fetchUnreadForBadge = useCallback(() => {
@@ -30,7 +39,9 @@ export default function MemberNavBar({ onLogout }) {
         const items = res.data?.items || [];
         const hasUnread = items.some((item) => {
           if (item.read_at != null) return false;
-          const createdAt = item.createdAt ? new Date(item.createdAt).getTime() : 0;
+          const createdAt = item.createdAt
+            ? new Date(item.createdAt).getTime()
+            : 0;
           const seenAt = item.seen_at ? new Date(item.seen_at).getTime() : null;
           return seenAt == null || createdAt > seenAt;
         });
@@ -51,10 +62,14 @@ export default function MemberNavBar({ onLogout }) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "notifications" },
-        () => { fetchUnreadForBadge(); }
+        () => {
+          fetchUnreadForBadge();
+        },
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user?.id, fetchUnreadForBadge]);
 
   useEffect(() => {
@@ -82,6 +97,39 @@ export default function MemberNavBar({ onLogout }) {
     };
 
     fetchProfileImage();
+
+    return () => {
+      controller.abort();
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchMembership = async () => {
+      if (!user?.id) {
+        setMe(null);
+        setMembershipResolved(false);
+        return;
+      }
+
+      try {
+        const response = await apiClient.get("/me", {
+          signal: controller.signal,
+        });
+        setMe(response.data ?? null);
+      } catch (error) {
+        if (error.name !== "CanceledError") {
+          setMe(null);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setMembershipResolved(true);
+        }
+      }
+    };
+
+    fetchMembership();
 
     return () => {
       controller.abort();
@@ -226,6 +274,9 @@ export default function MemberNavBar({ onLogout }) {
               variant="mobile"
               onClose={() => setMobileMenuOpen(false)}
               onLogout={onLogout}
+              hasActiveMembership={hasActiveMembership}
+              isPremiumMembership={isPremiumMembership}
+              membershipResolved={membershipResolved}
             />
           )}
         </div>
@@ -240,7 +291,7 @@ export default function MemberNavBar({ onLogout }) {
           Start Matching!
         </Link>
         <Link
-          href="/membership"
+          href={membershipHref}
           className="text-body2 text-purple-800 font-bold hover:underline cursor-pointer"
         >
           Merry Membership
@@ -325,6 +376,9 @@ export default function MemberNavBar({ onLogout }) {
                 variant="desktop"
                 onClose={() => setProfileOpen(false)}
                 onLogout={onLogout}
+                hasActiveMembership={hasActiveMembership}
+                isPremiumMembership={isPremiumMembership}
+                membershipResolved={membershipResolved}
               />
             )}
           </div>
