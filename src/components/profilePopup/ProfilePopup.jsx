@@ -33,8 +33,9 @@ export function ProfilePopup({
   id,
   leftButton,
   rightButton,
+  prefilledUser, // ใช้สำหรับ preview จากฟอร์ม (ไม่ต้อง fetch)
 }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(prefilledUser ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -46,12 +47,14 @@ export function ProfilePopup({
 
   // ล้างข้อมูลเก่าทันทีเมื่อ id เปลี่ยน — ไม่ให้ flash ข้อมูลเก่า
   useEffect(() => {
-    setUser(null);
-    setError(null);
-    setLoading(false);
-    setCurrentIndex(0);
-    setShowFullName(false);
-  }, [id]);
+    if (!prefilledUser) {
+      setUser(null);
+      setError(null);
+      setLoading(false);
+      setCurrentIndex(0);
+      setShowFullName(false);
+    }
+  }, [id, prefilledUser]);
 
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 1024px)");
@@ -60,6 +63,19 @@ export function ProfilePopup({
     mql.addEventListener("change", handler);
     return () => mql.removeEventListener("change", handler);
   }, []);
+
+  // ถ้ามี prefilledUser (เช่นจากหน้า Profile) ให้ใช้ข้อมูลนี้โดยไม่ fetch API
+  useEffect(() => {
+    if (!prefilledUser) return;
+    setUser({
+      ...prefilledUser,
+      images: prefilledUser.images ?? [],
+    });
+    setError(null);
+    setLoading(false);
+    setCurrentIndex(0);
+    setShowFullName(false);
+  }, [prefilledUser]);
 
   // ---------- เตรียมโหลดรูปทุกใบล่วงหน้าเมื่อมี user/รูปแล้ว ----------
   useEffect(() => {
@@ -73,7 +89,8 @@ export function ProfilePopup({
   }, [user?.images]);
 
   useEffect(() => {
-    if (!open || !id) return;
+    // ถ้ามี prefilledUser อยู่แล้ว ไม่ต้องยิง API
+    if (!open || !id || prefilledUser) return;
 
     let cancelled = false;
 
@@ -110,7 +127,7 @@ export function ProfilePopup({
 
     fetchProfile();
     return () => { cancelled = true; };
-  }, [open, id]);
+  }, [open, id, prefilledUser]);
 
   // ---------- รูปที่แสดง: เลือกจาก images ตาม currentIndex ----------
   const total = images.length;
@@ -216,14 +233,24 @@ export function ProfilePopup({
               <div className="absolute z-10 left-1/2 top-71 lg:top-112 -translate-x-1/2 flex gap-6 ">
                 {leftButton ?? (
                   <ButtonPass
-                    className="w-15 h-15 disabled:opacity-40 disabled:cursor-not-allowed [&_img]:w-10 [&_img]:h-10 shadow-button"
-                    onClick={() => alert("left button clicked")}
+                    className="w-15 h-15 [&_img]:w-10 [&_img]:h-10 shadow-button cursor-not-allowed pointer-events-none"
+                    disabled
+                    style={{
+                      filter: "none",
+                      opacity: 1,
+                      color: "inherit",
+                    }}
                   />
                 )}
                 {rightButton ?? (
                   <ButtonMerry
-                    className="w-15 h-15 disabled:opacity-40 disabled:cursor-not-allowed [&_img]:w-12 [&_img]:h-10 shadow-button"
-                    onClick={() => alert("right button clicked")}
+                    className="w-15 h-15 [&_img]:w-12 [&_img]:h-10 shadow-button cursor-not-allowed pointer-events-none"
+                    disabled
+                    style={{
+                      filter: "none",
+                      opacity: 1,
+                      color: "inherit",
+                    }}
                   />
                 )}
               </div>

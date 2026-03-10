@@ -168,7 +168,8 @@ const MultiSelect = ({
           ${error ? "border-utility-red" : ""}
         `}
       >
-        {value.map((item) => (
+    
+        {value.map((item, index) => (
           <div
             key={item}
             className="flex items-center gap-1 bg-purple-100 text-purple-700 px-3 py-1 rounded-lg text-body2"
