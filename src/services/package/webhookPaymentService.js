@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { PaymentTransactionStatus, SubscriptionStatus } from "@prisma/client";
-import { findSubscriptionById } from "@/repositories/package/subscriptionRepository";
+import {
+  findSubscriptionById,
+  findSubscriptionByOmiseSubscriptionId,
+} from "@/repositories/package/subscriptionRepository";
 import {
   findTransactionByExternalChargeId,
   upsertTransactionFromWebhook,
@@ -93,10 +96,11 @@ function parseIntOrNull(v) {
 
 /**
  * ประมวลผล webhook event จาก payment gateway
- * - หา UserSubscription จาก metadata.subscriptionId
+ * - หา UserSubscription จาก metadata.subscriptionId (our id) หรือ metadata.omise_subscription_id (map ไปยัง UserSubscription)
+ * - รองรับ charge จาก first purchase, change-plan และ Omise subscription (recurring)
  * - สร้างหรืออัปเดต PaymentTransaction (status PAID/FAILED)
- * - อัปเดต UserSubscription status (ACTIVE/FAILED), external_charge_id, paid_at
- * - log ข้อผิดพลาด (ไม่ throw เพื่อให้ webhook คืน 200 ให้ gateway)
+ * - อัปเดต UserSubscription (status, start_date, end_date, paid_at, external_charge_id)
+ * - สำหรับ recurring fail: บันทึก FAILED transaction แต่คง status ACTIVE จนถึง end_date
  *
  * @param {{ id?: string; type?: string; data?: { chargeId?: string; amount?: number; currency?: string; status?: string; paid?: boolean; metadata?: Record<string, unknown> } }} event
  * @returns {{ processed: boolean; subscriptionId?: number; transactionStatus?: string; error?: string }}
@@ -109,15 +113,21 @@ export async function processPaymentWebhookEvent(event) {
     typeof subscriptionIdRaw === "string"
       ? parseInt(subscriptionIdRaw, 10)
       : Number(subscriptionIdRaw);
+  const omiseSubscriptionId =
+    metadata.omise_subscription_id ?? metadata.omiseSubscriptionId ?? null;
 
   if (!chargeId) {
     console.warn("[webhook/payment] Missing chargeId in event", event?.id, event?.type);
     return { processed: false, error: "MISSING_CHARGE_ID" };
   }
 
-  if (!Number.isInteger(subscriptionId) || subscriptionId <= 0) {
+  const hasOurSubscriptionId = Number.isInteger(subscriptionId) && subscriptionId > 0;
+  const hasOmiseSubscriptionId =
+    typeof omiseSubscriptionId === "string" && omiseSubscriptionId.trim().length > 0;
+
+  if (!hasOurSubscriptionId && !hasOmiseSubscriptionId) {
     console.warn(
-      "[webhook/payment] Missing or invalid subscriptionId in metadata",
+      "[webhook/payment] Missing subscriptionId and omise_subscription_id in metadata",
       event?.id,
       metadata
     );
@@ -129,6 +139,36 @@ export async function processPaymentWebhookEvent(event) {
     metadata.targetPackageId ?? metadata.target_package_id
   );
 
+  let subscription = null;
+  try {
+    if (hasOurSubscriptionId) {
+      subscription = await findSubscriptionById(subscriptionId);
+    }
+    if (!subscription && hasOmiseSubscriptionId) {
+      subscription = await findSubscriptionByOmiseSubscriptionId(omiseSubscriptionId);
+    }
+  } catch (err) {
+    console.error("[webhook/payment] Subscription lookup error", err);
+    return {
+      processed: false,
+      error: err?.message || "SUBSCRIPTION_LOOKUP_FAILED",
+    };
+  }
+
+  if (!subscription) {
+    console.warn("[webhook/payment] Subscription not found", {
+      subscriptionId: hasOurSubscriptionId ? subscriptionId : null,
+      omiseSubscriptionId: hasOmiseSubscriptionId ? omiseSubscriptionId : null,
+    });
+    return { processed: false, error: "SUBSCRIPTION_NOT_FOUND" };
+  }
+
+  const resolvedSubscriptionId = subscription.id;
+  const isRecurringCharge =
+    hasOmiseSubscriptionId ||
+    metadata.source === "subscription" ||
+    parseBool(metadata.recurring);
+
   const isSuccess = isSuccessEvent(event);
   const isCancelled = !isSuccess && isCancelledEvent(event);
 
@@ -137,13 +177,16 @@ export async function processPaymentWebhookEvent(event) {
     : PaymentTransactionStatus.FAILED;
 
   // For change-plan: do NOT downgrade the user's membership on failed/cancelled payments.
+  // For recurring charge fail: keep ACTIVE until end_date (only record FAILED transaction).
   const subscriptionStatus = isSuccess
     ? SubscriptionStatus.ACTIVE
     : isChangePlan
       ? null
-      : isCancelled
-        ? SubscriptionStatus.CANCELLED
-        : SubscriptionStatus.FAILED;
+      : isRecurringCharge
+        ? null
+        : isCancelled
+          ? SubscriptionStatus.CANCELLED
+          : SubscriptionStatus.FAILED;
   const paidAt = isSuccess ? new Date() : null;
 
   // Idempotency: if this chargeId was already recorded AND subscription is already in final state,
@@ -154,12 +197,12 @@ export async function processPaymentWebhookEvent(event) {
     if (
       existingTx &&
       existingSub &&
-      existingTx.user_subscription_id === subscriptionId &&
+      existingTx.user_subscription_id === resolvedSubscriptionId &&
       existingTx.status === transactionStatus &&
-      (isChangePlan
+      (isChangePlan || isRecurringCharge
         ? true
         : existingSub.external_charge_id === chargeId &&
-          existingSub.status === subscriptionStatus)
+          (subscriptionStatus == null || existingSub.status === subscriptionStatus))
     ) {
       return {
         processed: true,
@@ -171,19 +214,6 @@ export async function processPaymentWebhookEvent(event) {
     console.warn("[webhook/payment] findTransactionByExternalChargeId error", chargeId, err);
   }
 
-  let subscription;
-  try {
-    subscription = await findSubscriptionById(subscriptionId);
-  } catch (err) {
-    console.error("[webhook/payment] findSubscriptionById error", subscriptionId, err);
-    return { processed: false, subscriptionId, error: err?.message || "SUBSCRIPTION_LOOKUP_FAILED" };
-  }
-
-  if (!subscription) {
-    console.warn("[webhook/payment] Subscription not found", subscriptionId);
-    return { processed: false, subscriptionId, error: "SUBSCRIPTION_NOT_FOUND" };
-  }
-
   // For change-plan success: load target package and validate amount against it.
   const amountMinor = event?.data?.amount;
   const currency = event?.data?.currency || "THB";
@@ -191,22 +221,22 @@ export async function processPaymentWebhookEvent(event) {
   if (isChangePlan && isSuccess) {
     if (!targetPackageId) {
       console.warn("[webhook/payment] Missing targetPackageId for change-plan", {
-        subscriptionId,
+        subscriptionId: resolvedSubscriptionId,
         chargeId,
         metadata,
       });
-      return { processed: false, subscriptionId, error: "MISSING_TARGET_PACKAGE_ID" };
+      return { processed: false, subscriptionId: resolvedSubscriptionId, error: "MISSING_TARGET_PACKAGE_ID" };
     }
     targetPackage = await prisma.package.findUnique({
       where: { id: targetPackageId },
     });
     if (!targetPackage) {
       console.warn("[webhook/payment] targetPackage not found for change-plan", {
-        subscriptionId,
+        subscriptionId: resolvedSubscriptionId,
         chargeId,
         targetPackageId,
       });
-      return { processed: false, subscriptionId, error: "TARGET_PACKAGE_NOT_FOUND" };
+      return { processed: false, subscriptionId: resolvedSubscriptionId, error: "TARGET_PACKAGE_NOT_FOUND" };
     }
   }
 
@@ -224,17 +254,17 @@ export async function processPaymentWebhookEvent(event) {
       : null;
     if (expectedMinor != null && receivedMinor != null && expectedMinor !== receivedMinor) {
       console.warn("[webhook/payment] Amount mismatch", {
-        subscriptionId,
+        subscriptionId: resolvedSubscriptionId,
         chargeId,
         expectedMinor,
         receivedMinor,
         currency,
       });
-      return { processed: false, subscriptionId, error: "AMOUNT_MISMATCH" };
+      return { processed: false, subscriptionId: resolvedSubscriptionId, error: "AMOUNT_MISMATCH" };
     }
   }
 
-  // กำหนดช่วงเวลาเริ่ม/หมดอายุเฉพาะกรณีชำระสำเร็จ และ subscription เดิมยังไม่ ACTIVE
+  // กำหนดช่วงเวลาเริ่ม/หมดอายุ: ชำระสำเร็จ และ (first/change-plan หรือ recurring renewal)
   let nextStartDate = subscription.start_date;
   let nextEndDate = subscription.end_date;
   let nextPackageId = null;
@@ -244,7 +274,10 @@ export async function processPaymentWebhookEvent(event) {
       nextStartDate = period.startDate;
       nextEndDate = period.endDate;
       nextPackageId = targetPackage.id;
-    } else if (subscription.status !== SubscriptionStatus.ACTIVE) {
+    } else if (
+      subscription.status !== SubscriptionStatus.ACTIVE ||
+      isRecurringCharge
+    ) {
       const period = calculateSubscriptionPeriod(subscription, paidAt);
       nextStartDate = period.startDate;
       nextEndDate = period.endDate;
@@ -267,7 +300,7 @@ export async function processPaymentWebhookEvent(event) {
     console.error("[webhook/payment] upsertTransactionFromWebhook error", chargeId, err);
     return {
       processed: false,
-      subscriptionId,
+      subscriptionId: resolvedSubscriptionId,
       transactionStatus,
       error: err?.message || "TRANSACTION_UPDATE_FAILED",
     };
@@ -305,7 +338,7 @@ export async function processPaymentWebhookEvent(event) {
     console.error("[webhook/payment] UserSubscription update error", subscription.id, err);
     return {
       processed: true,
-      subscriptionId,
+      subscriptionId: resolvedSubscriptionId,
       transactionStatus,
       error: err?.message || "SUBSCRIPTION_UPDATE_FAILED",
     };
@@ -313,7 +346,7 @@ export async function processPaymentWebhookEvent(event) {
 
   return {
     processed: true,
-    subscriptionId: subscription.id,
+    subscriptionId: resolvedSubscriptionId,
     transactionStatus,
   };
 }

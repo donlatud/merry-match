@@ -63,11 +63,14 @@ import { createOmisePaymentGatewayProvider } from "@/providers/payment/omiseProv
  *   (Optional) สร้าง charge สำหรับ QR code (เช่น Omise PromptPay)
  * @property {(rawBody: string | Buffer, signature: string | undefined, headers: Record<string, string | string[] | undefined>) => Promise<WebhookEvent>} handleWebhook
  *   แปลง webhook raw body + signature จาก gateway ให้เป็น WebhookEvent แบบกลาง
+ * @property {(subscriptionId: string) => Promise<void>} [cancelSubscription]
+ *   (Optional) ยกเลิก subscription ที่ gateway (ใช้สำหรับ cancel package เมื่อมี omise_subscription_id)
  */
 
 /**
  * ชื่อ gateway ปัจจุบัน (mock, omise, stripe ฯลฯ)
  * - ตั้งค่าใน .env เช่น PAYMENT_GATEWAY=mock หรือ PAYMENT_GATEWAY=omise
+ * - Phase 1: ยืนยันใช้ Omise เป็น default สำหรับ first purchase + change-plan + (อนาคต) subscription
  */
 export const CURRENT_PAYMENT_GATEWAY = "omise";
 

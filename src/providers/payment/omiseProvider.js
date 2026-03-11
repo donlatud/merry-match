@@ -275,6 +275,23 @@ export function createOmisePaymentGatewayProvider() {
         raw: parsed,
       };
     },
+
+    /**
+     * ยกเลิก subscription ที่ Omise (ใช้เมื่อ user cancel package และมี omise_subscription_id)
+     * ถ้า Omise SDK ไม่รองรับ subscriptions จะ no-op
+     *
+     * @param {string} subscriptionId - Omise subscription id (เช่น sub_xxx)
+     */
+    async cancelSubscription(subscriptionId) {
+      if (!subscriptionId || typeof subscriptionId !== "string") return;
+      const client = createOmiseClient();
+      if (typeof client?.subscriptions?.destroy !== "function") {
+        return;
+      }
+      await promisifyOmiseCall((cb) =>
+        client.subscriptions.destroy(subscriptionId.trim(), cb)
+      );
+    },
   };
 }
 
