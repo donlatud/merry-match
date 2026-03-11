@@ -3,6 +3,7 @@ import { PaymentTransactionStatus, SubscriptionStatus } from "@prisma/client";
 import { upsertPendingSubscription } from "@/repositories/package/subscriptionRepository";
 import { findSubscriptionById } from "@/repositories/package/subscriptionRepository";
 import { PENDING_SUBSCRIPTION_EXPIRE_MS } from "@/config/subscriptionConfig";
+import { getPaymentGatewayProvider } from "@/providers/paymentGatewayProvider";
 
 /**
  * สร้าง subscription แบบ PENDING เมื่อ user เลือกแพ็กเกจ
@@ -313,6 +314,159 @@ export async function prepareChangePlan({ userId, targetPackageId }) {
     targetPackage: minimalPackage(targetPackage),
     amount,
     currency: targetPackage.currency ?? "THB",
+  };
+}
+
+/**
+ * เปิดใช้ auto-renew (stub – โปรเจกต์นี้ไม่มีฟีเจอร์ auto-renew มีแค่ cancel)
+ * เตรียมไว้เผื่ออนาคต ทำงานแค่อัปเดต DB
+ *
+ * @param {string} userId
+ * @returns {Promise<{ ok: boolean }>}
+ */
+export async function enableAutoRenew(userId) {
+  if (!userId) {
+    const err = new Error("MISSING_USER");
+    err.statusCode = 400;
+    throw err;
+  }
+  const profile = await prisma.profile.findUnique({
+    where: { user_id: userId },
+    select: { id: true, subscription: { select: { id: true, status: true, end_date: true } } },
+  });
+  if (!profile?.subscription) {
+    const err = new Error("SUBSCRIPTION_NOT_FOUND");
+    err.statusCode = 404;
+    throw err;
+  }
+  const sub = profile.subscription;
+  const now = new Date();
+  const isActive =
+    sub.status === SubscriptionStatus.ACTIVE &&
+    sub.end_date instanceof Date &&
+    sub.end_date.getTime() > now.getTime();
+  if (!isActive) {
+    const err = new Error("SUBSCRIPTION_NOT_ACTIVE");
+    err.statusCode = 409;
+    throw err;
+  }
+  await prisma.userSubscription.update({
+    where: { id: sub.id },
+    data: { auto_renew: true, cancelled_at: null },
+  });
+  return { ok: true };
+}
+
+/**
+ * ปิดใช้ auto-renew (stub – โปรเจกต์นี้ใช้ cancel แทน ผ่าน POST /api/membership/cancel)
+ * เตรียมไว้เผื่ออนาคต ทำงานแค่อัปเดต DB
+ *
+ * @param {string} userId
+ * @returns {Promise<{ ok: boolean; cancelledAt: string }>}
+ */
+export async function disableAutoRenew(userId) {
+  if (!userId) {
+    const err = new Error("MISSING_USER");
+    err.statusCode = 400;
+    throw err;
+  }
+  const profile = await prisma.profile.findUnique({
+    where: { user_id: userId },
+    select: { id: true, subscription: { select: { id: true, status: true, end_date: true } } },
+  });
+  if (!profile?.subscription) {
+    const err = new Error("SUBSCRIPTION_NOT_FOUND");
+    err.statusCode = 404;
+    throw err;
+  }
+  const sub = profile.subscription;
+  const now = new Date();
+  const isActive =
+    sub.status === SubscriptionStatus.ACTIVE &&
+    sub.end_date instanceof Date &&
+    sub.end_date.getTime() > now.getTime();
+  if (!isActive) {
+    const err = new Error("SUBSCRIPTION_NOT_ACTIVE");
+    err.statusCode = 409;
+    throw err;
+  }
+  await prisma.userSubscription.update({
+    where: { id: sub.id },
+    data: { auto_renew: false, cancelled_at: now },
+  });
+  return { ok: true, cancelledAt: now.toISOString() };
+}
+
+/**
+ * ยกเลิกแพ็กเกจที่มีอยู่ (cancel at period end): user ยังใช้สิทธิ์ได้จนถึง end_date
+ * ถ้ามี omise_subscription_id จะเรียก gateway เพื่อยกเลิก subscription ที่ Omise ด้วย
+ *
+ * @param {string} userId
+ * @returns {Promise<{ ok: boolean; cancelledAt: string; endDate: string | null }>}
+ */
+export async function cancelPackage(userId) {
+  if (!userId) {
+    const err = new Error("MISSING_USER");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const profile = await prisma.profile.findUnique({
+    where: { user_id: userId },
+    select: {
+      id: true,
+      subscription: {
+        select: {
+          id: true,
+          status: true,
+          end_date: true,
+          omise_subscription_id: true,
+        },
+      },
+    },
+  });
+
+  if (!profile?.subscription) {
+    const err = new Error("SUBSCRIPTION_NOT_FOUND");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const sub = profile.subscription;
+  const now = new Date();
+  const isActive =
+    sub.status === SubscriptionStatus.ACTIVE &&
+    sub.end_date instanceof Date &&
+    sub.end_date.getTime() > now.getTime();
+
+  if (!isActive) {
+    const err = new Error("SUBSCRIPTION_NOT_ACTIVE");
+    err.statusCode = 409;
+    throw err;
+  }
+
+  // ถ้ามี Omise subscription ให้เรียก gateway ยกเลิก (optional; provider อาจยังไม่ implement)
+  const omiseSubId = sub.omise_subscription_id;
+  if (omiseSubId) {
+    try {
+      const provider = getPaymentGatewayProvider();
+      if (typeof provider.cancelSubscription === "function") {
+        await provider.cancelSubscription(omiseSubId);
+      }
+    } catch (e) {
+      console.warn("[cancelPackage] Omise cancelSubscription skip or failed", omiseSubId, e?.message);
+    }
+  }
+
+  await prisma.userSubscription.update({
+    where: { id: sub.id },
+    data: { auto_renew: false, cancelled_at: now },
+  });
+
+  return {
+    ok: true,
+    cancelledAt: now.toISOString(),
+    endDate: sub.end_date ? sub.end_date.toISOString() : null,
   };
 }
 

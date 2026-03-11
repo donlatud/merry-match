@@ -16,6 +16,22 @@ export async function findSubscriptionById(subscriptionId) {
 }
 
 /**
+ * หา subscription ตาม Omise subscription id (ใช้เมื่อ webhook มาจาก charge ของ Omise recurring)
+ *
+ * @param {string} omiseSubscriptionId
+ * @returns {Promise<import("@prisma/client").UserSubscription & { package: import("@prisma/client").Package }> | null>}
+ */
+export async function findSubscriptionByOmiseSubscriptionId(omiseSubscriptionId) {
+  if (!omiseSubscriptionId || typeof omiseSubscriptionId !== "string") return null;
+  const id = omiseSubscriptionId.trim();
+  if (!id) return null;
+  return prisma.userSubscription.findFirst({
+    where: { omise_subscription_id: id },
+    include: { package: true },
+  });
+}
+
+/**
  * สร้างหรืออัปเดต subscription ของโปรไฟล์ให้เป็นสถานะ PENDING
  * - ใช้ profile_id เป็น key (1 โปรไฟล์ มี 1 subscription ตาม constraint)
  * - รวม package กลับมาใน result เพื่อใช้ข้อมูลราคาสำหรับสร้าง payment session
