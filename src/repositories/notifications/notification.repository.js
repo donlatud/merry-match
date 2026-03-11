@@ -39,6 +39,19 @@ export const notificationRepository = {
     });
   },
 
+  async existsMatchedByActorAndRecipient(actorId, recipientId) {
+    const row = await prisma.notification.findFirst({
+      where: {
+        actor_id: actorId,
+        recipient_id: recipientId,
+        type: "MATCHED",
+      },
+      select: { id: true },
+    });
+
+    return Boolean(row);
+  },
+
   async updateSeenByRecipientId(profileId, now) {
     return await prisma.notification.updateMany({
       where: { recipient_id: profileId },
