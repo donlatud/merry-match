@@ -56,7 +56,22 @@ export const notificationsService = {
       await notificationRepository.findProfileIdByUserId(userId);
 
     if (!profileId) {
+      if (query?.matchedRecipientId) {
+        return { hasMatched: false };
+      }
       return { items: [] };
+    }
+
+    if (
+      query?.matchedRecipientId &&
+      typeof query.matchedRecipientId === "string"
+    ) {
+      const hasMatched =
+        await notificationRepository.existsMatchedByActorAndRecipient(
+          profileId,
+          query.matchedRecipientId,
+        );
+      return { hasMatched };
     }
 
     const rows = await notificationRepository.findManyByRecipientId(

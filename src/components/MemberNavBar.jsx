@@ -2,10 +2,19 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import MemberNavDropdown from "@/components/MemberNavDropdown";
-import NotificationDropdown from "@/components/NotificationDropdown";
+import NotificationDropdown from "@/components/notifications/NotificationDropdown";
+import { ButtonMerry } from "@/components/commons/button/IconButton";
+import { ProfilePopup } from "@/components/profilePopup/ProfilePopup";
+import MerryMatchModal from "@/components/matching/MerryMatchModal";
+import { useNotificationBadge } from "@/hooks/notifications/useNotificationBadge";
+import { useNotificationProfilePopup } from "@/hooks/notifications/useNotificationProfilePopup";
 import { useAuth } from "@/hooks/login/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { apiClient } from "@/lib/apiClient";
+import {
+  hasActiveMembership,
+  isPremiumMembership as isPremiumMembershipForSubscription,
+} from "@/lib/membershipHelpers";
 import { supabase } from "@/providers/supabase.provider";
 
 export default function MemberNavBar({ onLogout }) {
@@ -14,63 +23,25 @@ export default function MemberNavBar({ onLogout }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState(null);
-  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
-  const [myProfileId, setMyProfileId] = useState(null);
   const [me, setMe] = useState(null);
   const [membershipResolved, setMembershipResolved] = useState(false);
+  const [matchModalOpenFromNotif, setMatchModalOpenFromNotif] = useState(false);
+  const [matchedProfileIdFromNotif, setMatchedProfileIdFromNotif] = useState(null);
+  const [matchedProfileFromNotif, setMatchedProfileFromNotif] = useState(null);
   const mobileNotifRef = useRef(null);
   const desktopNotifRef = useRef(null);
   const profileDropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
-  const hasActiveMembership = Boolean(
-    me?.subscription?.status === "ACTIVE" && me?.subscription?.package,
+
+  const { hasUnread: hasUnreadNotifications, refresh: fetchUnreadForBadge, markSeen: markNotificationsSeen } = useNotificationBadge({
+    userId: user?.id,
+  });
+
+  const hasActiveMembershipState = hasActiveMembership(me?.subscription);
+  const isPremiumMembership = isPremiumMembershipForSubscription(
+    me?.subscription,
   );
-  const isPremiumMembership = Boolean(
-    hasActiveMembership &&
-    String(me?.subscription?.package?.name ?? "").toLowerCase() === "premium",
-  );
-  const membershipHref = hasActiveMembership ? "/membership" : "/payment";
-
-  // Badge ring: ใช้ seen_at — โชว์ ring เมื่อมี noti ที่ read_at null และ (seen_at null หรือ created_at > seen_at)
-  const fetchUnreadForBadge = useCallback(() => {
-    apiClient
-      .get("/notifications", { params: { limit: 10 } })
-      .then((res) => {
-        const items = res.data?.items || [];
-        const hasUnread = items.some((item) => {
-          if (item.read_at != null) return false;
-          const createdAt = item.createdAt
-            ? new Date(item.createdAt).getTime()
-            : 0;
-          const seenAt = item.seen_at ? new Date(item.seen_at).getTime() : null;
-          return seenAt == null || createdAt > seenAt;
-        });
-        setHasUnreadNotifications(hasUnread);
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    fetchUnreadForBadge();
-  }, [user?.id, fetchUnreadForBadge]);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    const channel = supabase
-      .channel("notifications-badge")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications" },
-        () => {
-          fetchUnreadForBadge();
-        },
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id, fetchUnreadForBadge]);
+  const membershipHref = hasActiveMembershipState ? "/membership" : "/payment";
 
   useEffect(() => {
     const controller = new AbortController();
@@ -86,12 +57,10 @@ export default function MemberNavBar({ onLogout }) {
           signal: controller.signal,
         });
         setProfileImageUrl(response.data.profile_image_url ?? null);
-        setMyProfileId(response.data.id ?? null);
       } catch (error) {
         if (error.name !== "CanceledError") {
           console.error("fetchProfileImage error:", error);
           setProfileImageUrl(null);
-          setMyProfileId(null);
         }
       }
     };
@@ -139,8 +108,74 @@ export default function MemberNavBar({ onLogout }) {
   const userInitials = (user?.username || "MM").slice(0, 2).toUpperCase();
   const showNotifRing = hasUnreadNotifications && !notifOpen;
 
-  const markNotificationsSeen = useCallback(() => {
-    apiClient.patch("/notifications", { action: "seen" }).catch(() => {});
+  const {
+    selectedProfileId: selectedNotificationProfileId,
+    popupOpen: notificationProfilePopupOpen,
+    closePopup: closeNotificationProfilePopup,
+    openPopup: openNotificationProfilePopup,
+    merrySubmitting,
+    hasMatchedWithSelected,
+    checkingMatched,
+    handleMerry: handleNotificationPopupMerry,
+  } = useNotificationProfilePopup({
+    onPopupOpened: () => {
+      markNotificationsSeen();
+      setNotifOpen(false);
+    },
+    onRefresh: fetchUnreadForBadge,
+    onMatch: (profileId) => {
+      setMatchedProfileIdFromNotif(profileId);
+      setMatchModalOpenFromNotif(true);
+    },
+  });
+
+  const notificationPopupRightButton =
+    checkingMatched || hasMatchedWithSelected ? (
+      <></>
+    ) : (
+      <ButtonMerry
+        key={`merry-${selectedNotificationProfileId ?? "notification"}`}
+        onClick={handleNotificationPopupMerry}
+        disabled={merrySubmitting}
+        className="w-20 h-20 disabled:opacity-40 disabled:cursor-not-allowed [&_img]:w-12 [&_img]:h-12"
+      />
+    );
+
+  // Fetch profile for match modal (จาก notification)
+  useEffect(() => {
+    if (!matchModalOpenFromNotif || !matchedProfileIdFromNotif) {
+      setMatchedProfileFromNotif(null);
+      return;
+    }
+    const controller = new AbortController();
+    apiClient
+      .get(`/profile/${matchedProfileIdFromNotif}`, {
+        signal: controller.signal,
+      })
+      .then((res) => {
+        const d = res.data;
+        setMatchedProfileFromNotif({
+          id: d?.id,
+          name: d?.name ?? "Someone",
+          image: Array.isArray(d?.images) ? d.images[0] ?? null : null,
+        });
+      })
+      .catch((err) => {
+        if (err.name !== "CanceledError") {
+          setMatchedProfileFromNotif({
+            id: matchedProfileIdFromNotif,
+            name: "Someone",
+            image: null,
+          });
+        }
+      });
+    return () => controller.abort();
+  }, [matchModalOpenFromNotif, matchedProfileIdFromNotif]);
+
+  const closeMatchModalFromNotif = useCallback(() => {
+    setMatchModalOpenFromNotif(false);
+    setMatchedProfileIdFromNotif(null);
+    setMatchedProfileFromNotif(null);
   }, []);
 
   // Close dropdown when clicking outside
@@ -182,6 +217,18 @@ export default function MemberNavBar({ onLogout }) {
 
   return (
     <>
+      <ProfilePopup
+        open={notificationProfilePopupOpen}
+        onClose={closeNotificationProfilePopup}
+        id={selectedNotificationProfileId}
+        leftButton={<></>}
+        rightButton={notificationPopupRightButton}
+      />
+      <MerryMatchModal
+        open={matchModalOpenFromNotif}
+        onClose={closeMatchModalFromNotif}
+        matchedProfile={matchedProfileFromNotif}
+      />
       {/* Mobile: Chat + Notification + Hamburger */}
       <div className="flex items-center gap-5 lg:hidden">
         <div className="flex items-center gap-3">
@@ -216,12 +263,8 @@ export default function MemberNavBar({ onLogout }) {
               type="button"
               onClick={() => {
                 setNotifOpen((prev) => {
-                  if (!prev) {
-                    setHasUnreadNotifications(false);
-                    markNotificationsSeen();
-                  } else {
-                    markNotificationsSeen();
-                  }
+                  if (!prev) markNotificationsSeen();
+                  else markNotificationsSeen();
                   return !prev;
                 });
               }}
@@ -237,7 +280,7 @@ export default function MemberNavBar({ onLogout }) {
             </button>
             {showNotifRing && (
               <span
-                className="absolute -top-[1px] right-0 size-[7px] rounded-full bg-red-500 z-10"
+                className="absolute -top-px right-0 size-[7px] rounded-full bg-red-500 z-10"
                 aria-hidden
               />
             )}
@@ -245,6 +288,7 @@ export default function MemberNavBar({ onLogout }) {
             {notifOpen && (
               <NotificationDropdown
                 variant="mobile"
+                onOpenProfilePopup={openNotificationProfilePopup}
                 onClose={() => {
                   markNotificationsSeen();
                   setNotifOpen(false);
@@ -274,7 +318,7 @@ export default function MemberNavBar({ onLogout }) {
               variant="mobile"
               onClose={() => setMobileMenuOpen(false)}
               onLogout={onLogout}
-              hasActiveMembership={hasActiveMembership}
+              hasActiveMembership={hasActiveMembershipState}
               isPremiumMembership={isPremiumMembership}
               membershipResolved={membershipResolved}
             />
@@ -314,12 +358,8 @@ export default function MemberNavBar({ onLogout }) {
               type="button"
               onClick={() => {
                 setNotifOpen((prev) => {
-                  if (!prev) {
-                    setHasUnreadNotifications(false);
-                    markNotificationsSeen();
-                  } else {
-                    markNotificationsSeen();
-                  }
+                  if (!prev) markNotificationsSeen();
+                  else markNotificationsSeen();
                   return !prev;
                 });
               }}
@@ -343,6 +383,7 @@ export default function MemberNavBar({ onLogout }) {
             {notifOpen && (
               <NotificationDropdown
                 variant="desktop"
+                onOpenProfilePopup={openNotificationProfilePopup}
                 onClose={() => {
                   markNotificationsSeen();
                   setNotifOpen(false);
@@ -376,7 +417,7 @@ export default function MemberNavBar({ onLogout }) {
                 variant="desktop"
                 onClose={() => setProfileOpen(false)}
                 onLogout={onLogout}
-                hasActiveMembership={hasActiveMembership}
+              hasActiveMembership={hasActiveMembershipState}
                 isPremiumMembership={isPremiumMembership}
                 membershipResolved={membershipResolved}
               />
