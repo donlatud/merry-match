@@ -2,7 +2,9 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import { toast } from "sonner";
+import { merryToast } from "@/components/commons/toast/MerryToast";
+import { ExclamationCircleIcon } from "@heroicons/react/24/solid";
+import { CheckCircleIcon } from "@heroicons/react/24/solid";
 import NavBar from "@/components/NavBar";
 import { StepIndicator } from "@/components/register/StepIndicator";
 import { StepOneBasicInfo, getDefaultStep1Form } from "@/components/register/StepOneBasicInfo";
@@ -73,7 +75,11 @@ export default function RegisterPage() {
       setStep3Errors(step3.errors);
       setCurrentStep(3);
       if (step3.errors.photos) {
-        toast.error(step3.errors.photos, { duration: 2000 });
+        merryToast.error(
+          "Validation error",
+          step3.errors.photos,
+          <ExclamationCircleIcon className="size-10! text-red-400" />
+        );
       }
       return;
     }
@@ -84,15 +90,21 @@ export default function RegisterPage() {
       const data = await submitRegister(payloadForApi, photoFiles);
       setSubmitSuccess(data);
       setSubmitError(null);
-      toast.success("Registration successful", {
-        description: "You can now sign in with your account.",
-      });
+      merryToast.success(
+        "Registration successful",
+        "You can now sign in with your account.",
+        <CheckCircleIcon className="size-10! text-green-500" />
+      );
       router.push("/login");
     } catch (err) {
       const message = err.response?.data?.error ?? err.message ?? "Registration failed";
       setSubmitError(message);
       setSubmitSuccess(null);
-      toast.error("Registration failed", { description: message });
+      merryToast.error(
+        "Registration failed",
+        message,
+        <ExclamationCircleIcon className="size-10! text-red-400" />
+      );
     }
   };
 
