@@ -12,6 +12,7 @@ import {
   amountFromMajorToMinor,
   amountFromMinorToMajor,
 } from "@/lib/currencyHelpers";
+import { getPaymentGatewayProvider } from "@/providers/paymentGatewayProvider";
 
 const GATEWAY_NAME = "omise";
 
@@ -286,6 +287,92 @@ export async function processPaymentWebhookEvent(event) {
 
   const amountMajor = amountFromMinorToMajor(amountMinor, currency);
 
+  // Auto-subscription rule:
+  // - On first purchase success (non-change-plan): set auto_renew = true and create Omise subscription if possible.
+  // - On recurring charges: keep auto_renew as-is (should remain true until cancelled).
+  // - On change-plan success: if auto_renew is true, switch Omise subscription to target plan
+  //   by creating a new subscription then cancelling the old one.
+  let nextAutoRenew = null;
+  let nextCancelledAt = undefined;
+  let createdOmiseSubscriptionId = null;
+  if (isSuccess && !isChangePlan && !isRecurringCharge) {
+    nextAutoRenew = true;
+    nextCancelledAt = null;
+
+    const customerId = subscription.omise_customer_id;
+    const existingSubId = subscription.omise_subscription_id;
+    const planId = subscription?.package?.omise_plan_id?.trim() || null;
+
+    if (customerId && !existingSubId && planId) {
+      try {
+        const provider = getPaymentGatewayProvider();
+        if (typeof provider.createSubscription === "function") {
+          const created = await provider.createSubscription({
+            customerId,
+            planId,
+            metadata: {
+              subscriptionId: String(resolvedSubscriptionId),
+              source: "subscription",
+            },
+          });
+          createdOmiseSubscriptionId = created?.id || null;
+        }
+      } catch (e) {
+        console.warn(
+          "[webhook/payment] createSubscription failed",
+          resolvedSubscriptionId,
+          e?.message
+        );
+      }
+    }
+  }
+
+  // Change-plan + auto-renew: create new subscription for target package plan, cancel old subscription.
+  if (isSuccess && isChangePlan && targetPackage && !isRecurringCharge) {
+    const shouldAutoRenew = subscription.auto_renew === true;
+    const customerId = subscription.omise_customer_id;
+    const oldSubId = subscription.omise_subscription_id;
+    const newPlanId = targetPackage?.omise_plan_id?.trim() || null;
+
+    if (shouldAutoRenew && customerId && newPlanId) {
+      try {
+        const provider = getPaymentGatewayProvider();
+        if (typeof provider.createSubscription === "function") {
+          const created = await provider.createSubscription({
+            customerId,
+            planId: newPlanId,
+            metadata: {
+              subscriptionId: String(resolvedSubscriptionId),
+              source: "subscription",
+            },
+          });
+          const newSubId = created?.id || null;
+          if (newSubId) {
+            createdOmiseSubscriptionId = newSubId;
+            if (oldSubId && typeof provider.cancelSubscription === "function") {
+              try {
+                await provider.cancelSubscription(oldSubId);
+              } catch (e) {
+                console.warn(
+                  "[webhook/payment] cancel old subscription failed",
+                  resolvedSubscriptionId,
+                  oldSubId,
+                  e?.message
+                );
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(
+          "[webhook/payment] createSubscription for change-plan failed",
+          resolvedSubscriptionId,
+          e?.message
+        );
+      }
+    }
+  }
+
   try {
     await upsertTransactionFromWebhook({
       userSubscriptionId: subscription.id,
@@ -311,6 +398,11 @@ export async function processPaymentWebhookEvent(event) {
       where: { id: subscription.id },
       data: {
         ...(subscriptionStatus ? { status: subscriptionStatus } : {}),
+        ...(nextAutoRenew != null ? { auto_renew: nextAutoRenew } : {}),
+        ...(nextCancelledAt !== undefined ? { cancelled_at: nextCancelledAt } : {}),
+        ...(createdOmiseSubscriptionId
+          ? { omise_subscription_id: createdOmiseSubscriptionId }
+          : {}),
         ...(isSuccess
           ? {
               start_date: nextStartDate,

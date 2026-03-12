@@ -277,6 +277,74 @@ export function createOmisePaymentGatewayProvider() {
     },
 
     /**
+     * สร้าง Omise customer จาก card token (ใช้สำหรับ auto-subscription)
+     *
+     * @param {{ email: string; cardToken: string; description?: string }} params
+     * @returns {Promise<{ id: string; email?: string }>}
+     */
+    async createCustomer(params) {
+      if (!params?.email || !params?.cardToken) {
+        const err = new Error("MISSING_EMAIL_OR_CARD_TOKEN");
+        err.statusCode = 400;
+        throw err;
+      }
+
+      if (typeof client?.customers?.create !== "function") {
+        const err = new Error("OMISE_CUSTOMERS_NOT_AVAILABLE");
+        err.statusCode = 501;
+        throw err;
+      }
+
+      const customer = await promisifyOmiseCall((cb) =>
+        client.customers.create(
+          {
+            email: String(params.email).trim(),
+            card: params.cardToken,
+            ...(params.description ? { description: params.description } : {}),
+          },
+          cb
+        )
+      );
+
+      return { id: customer?.id, email: customer?.email };
+    },
+
+    /**
+     * สร้าง Omise subscription (recurring) สำหรับ customer + plan
+     *
+     * @param {{ customerId: string; planId: string; metadata?: Record<string, string> }} params
+     * @returns {Promise<{ id: string }>}
+     */
+    async createSubscription(params) {
+      if (!params?.customerId || !params?.planId) {
+        const err = new Error("MISSING_CUSTOMER_OR_PLAN_ID");
+        err.statusCode = 400;
+        throw err;
+      }
+
+      if (typeof client?.subscriptions?.create !== "function") {
+        const err = new Error("OMISE_SUBSCRIPTIONS_NOT_AVAILABLE");
+        err.statusCode = 501;
+        throw err;
+      }
+
+      const sub = await promisifyOmiseCall((cb) =>
+        client.subscriptions.create(
+          {
+            customer: params.customerId.trim(),
+            plan: params.planId.trim(),
+            ...(params.metadata && Object.keys(params.metadata).length > 0
+              ? { metadata: params.metadata }
+              : {}),
+          },
+          cb
+        )
+      );
+
+      return { id: sub?.id };
+    },
+
+    /**
      * ยกเลิก subscription ที่ Omise (ใช้เมื่อ user cancel package และมี omise_subscription_id)
      * ถ้า Omise SDK ไม่รองรับ subscriptions จะ no-op
      *
@@ -284,7 +352,6 @@ export function createOmisePaymentGatewayProvider() {
      */
     async cancelSubscription(subscriptionId) {
       if (!subscriptionId || typeof subscriptionId !== "string") return;
-      const client = createOmiseClient();
       if (typeof client?.subscriptions?.destroy !== "function") {
         return;
       }

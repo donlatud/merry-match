@@ -63,6 +63,10 @@ import { createOmisePaymentGatewayProvider } from "@/providers/payment/omiseProv
  *   (Optional) สร้าง charge สำหรับ QR code (เช่น Omise PromptPay)
  * @property {(rawBody: string | Buffer, signature: string | undefined, headers: Record<string, string | string[] | undefined>) => Promise<WebhookEvent>} handleWebhook
  *   แปลง webhook raw body + signature จาก gateway ให้เป็น WebhookEvent แบบกลาง
+ * @property {(params: { email: string; cardToken: string; description?: string }) => Promise<{ id: string; email?: string }>} [createCustomer]
+ *   (Optional) สร้าง customer ที่ gateway จาก card token (ใช้สำหรับ auto-subscription)
+ * @property {(params: { customerId: string; planId: string; metadata?: Record<string, string> }) => Promise<{ id: string }>} [createSubscription]
+ *   (Optional) สร้าง subscription (recurring) ที่ gateway (auto-subscription)
  * @property {(subscriptionId: string) => Promise<void>} [cancelSubscription]
  *   (Optional) ยกเลิก subscription ที่ gateway (ใช้สำหรับ cancel package เมื่อมี omise_subscription_id)
  */
