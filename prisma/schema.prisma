@@ -148,8 +148,9 @@ model Package {
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
-  subscriptions UserSubscription[]
-  details       DetailPackage[]
+  subscriptions         UserSubscription[]
+  details               DetailPackage[]
+  payment_transactions  PaymentTransaction[] @relation("PaymentTransactionPackage")
 
   @@map("packages")
   @@schema("public")
@@ -184,6 +185,7 @@ model PaymentTransaction {
   id                   Int                      @id @default(autoincrement())
   user_subscription_id Int
   amount               Decimal                  @db.Decimal(10, 2)
+  package_id           Int?                     // แพ็ก ณ ตอนจ่าย — ใช้แสดง billing history (relation ไปที่ Package)
   currency             String
   gateway              String
   external_charge_id   String?                  @unique
@@ -192,6 +194,7 @@ model PaymentTransaction {
   paid_at              DateTime?
 
   user_subscription    UserSubscription         @relation(fields: [user_subscription_id], references: [id], onDelete: Cascade)
+  package              Package?                @relation("PaymentTransactionPackage", fields: [package_id], references: [id])
 
   @@map("payment_transactions")
   @@schema("public")

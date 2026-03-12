@@ -95,6 +95,31 @@ export default async function handler(req, res) {
     }
 
     const provider = getPaymentGatewayProvider();
+
+    // Auto-subscription: ensure Omise customer exists (card only).
+    // We do this for both first purchase and change-plan so future recurring charges can be linked.
+    // Subscription creation will happen after charge success (in webhook) using stored omise_customer_id.
+    if (!subscription?.omise_customer_id && typeof provider.createCustomer === "function") {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true },
+      });
+      const email = user?.email;
+      if (email) {
+        const customer = await provider.createCustomer({
+          email,
+          cardToken,
+          description: `MerryMatch user ${userId}`,
+        });
+        if (customer?.id) {
+          await prisma.userSubscription.update({
+            where: { id: subscription.id },
+            data: { omise_customer_id: customer.id },
+          });
+        }
+      }
+    }
+
     const result = await provider.createCardCharge({
       amount,
       currency,
@@ -106,6 +131,7 @@ export default async function handler(req, res) {
         packageName: pkg.name,
         changePlan: isChangePlan,
         targetPackageId: isChangePlan ? pkg.id : undefined,
+        autoRenew: !isChangePlan, // business rule: first purchase enables auto-renew by default
       },
     });
 
