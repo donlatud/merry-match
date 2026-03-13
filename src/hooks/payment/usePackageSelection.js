@@ -17,6 +17,7 @@ function buildCheckoutUrl({
   mode,
   targetPackageId,
   currentPackageName,
+  iconUrl,
 }) {
   const params = new URLSearchParams({ subscriptionId: String(subscriptionId) });
   if (packageName) params.set("packageName", packageName);
@@ -30,6 +31,7 @@ function buildCheckoutUrl({
     if (targetPackageId != null) params.set("targetPackageId", String(targetPackageId));
     if (currentPackageName) params.set("currentPackageName", currentPackageName);
   }
+  if (iconUrl) params.set("iconUrl", iconUrl);
   return `/payment/checkout?${params.toString()}`;
 }
 
@@ -120,6 +122,7 @@ export function usePackageSelection() {
         mode: payload.mode,
         targetPackageId: payload.targetPackageId,
         currentPackageName,
+        iconUrl: selectedPackage?.iconUrl ?? undefined,
       });
       router.push(url);
     },

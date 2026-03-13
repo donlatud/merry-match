@@ -2,11 +2,10 @@
 
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { PACKAGE_ICON_VARIANTS } from "@/constants/packageIcons";
 
 /**
  * การ์ดแสดงรายละเอียดแพ็กเกจหลังชำระสำเร็จ (gradient, ข้อความสีขาว)
- * ใช้ในหน้า Payment Success ตามดีไซน์ Figma
+ * ใช้ iconUrl จาก API/query (เหมือน MembershipContent) แทน PACKAGE_ICON_VARIANTS
  *
  * @param {{
  *   packageName: string;
@@ -15,7 +14,7 @@ import { PACKAGE_ICON_VARIANTS } from "@/constants/packageIcons";
  *   startDate: string;  // ISO date
  *   nextBillingDate: string;  // ISO date
  *   features?: string[];
- *   iconVariant?: "basic" | "platinum" | "premium";
+ *   iconUrl?: string | null;
  *   className?: string;
  * }} props
  */
@@ -29,14 +28,13 @@ export function PaymentSuccessCard({
     "'Merry' more than a daily limited",
     "Up to 50 Merry per day",
   ],
-  iconVariant = "basic",
+  iconUrl = null,
   className,
 }) {
   const start = startDate ? format(new Date(startDate), "dd/MM/yyyy") : "—";
   const next = nextBillingDate
     ? format(new Date(nextBillingDate), "dd/MM/yyyy")
     : "—";
-  const icon = PACKAGE_ICON_VARIANTS[iconVariant] ?? PACKAGE_ICON_VARIANTS.basic;
 
   return (
     <div
@@ -46,14 +44,16 @@ export function PaymentSuccessCard({
       )}
       aria-label="Membership details"
     >
-      {/* กล่อง 1: icon */}
+      {/* กล่อง 1: icon จาก API */}
       <div>
         <div className="rounded-[16px] bg-gray-100 w-[60px] h-[60px] flex items-center justify-center">
-          <img
-            src={icon.src}
-            alt={icon.alt}
-            className="h-9 w-9"
-          />
+          {iconUrl ? (
+            <img
+              src={iconUrl}
+              alt=""
+              className="h-9 w-9 object-contain"
+            />
+          ) : null}
         </div>
       </div>
 

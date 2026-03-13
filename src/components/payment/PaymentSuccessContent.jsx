@@ -4,6 +4,7 @@ import { PrimaryButton } from "@/components/commons/button/PrimaryButton";
 
 /**
  * Unified responsive layout for Payment Success page (mobile + desktop).
+ * ใช้ iconUrl จาก query/API แทน iconVariant
  *
  * @param {{
  *  packageName: string;
@@ -12,7 +13,7 @@ import { PrimaryButton } from "@/components/commons/button/PrimaryButton";
  *  startDate: string;
  *  nextBillingDate: string;
  *  features: string[];
- *  iconVariant: "basic" | "platinum" | "premium";
+ *  iconUrl?: string | null;
  *  onBackToHome: () => void;
  *  onCheckMembership: () => void;
  * }} props
@@ -24,7 +25,7 @@ export function PaymentSuccessContent({
   startDate,
   nextBillingDate,
   features,
-  iconVariant,
+  iconUrl = null,
   onBackToHome,
   onCheckMembership,
 }) {
@@ -93,7 +94,7 @@ export function PaymentSuccessContent({
             startDate={startDate}
             nextBillingDate={nextBillingDate}
             features={features}
-            iconVariant={iconVariant}
+            iconUrl={iconUrl}
           />
         </section>
       </div>

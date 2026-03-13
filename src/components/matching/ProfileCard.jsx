@@ -14,7 +14,11 @@ export default function ProfileCard({ profile, onViewProfile }) {
           {profile.name} {profile.age}
         </h2>
         <div className="flex items-center gap-1.5 mt-1">
-          <img src="/merry_icon/icon-image.svg" alt="" className="w-4 h-4 opacity-80" />
+          <img
+            src="/merry_icon/icon-location.svg"
+            alt=""
+            className="w-4 h-4 opacity-80"
+          />
           <span className="text-body4 text-white/80">{profile.location}</span>
         </div>
         <button

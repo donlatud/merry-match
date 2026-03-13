@@ -2,12 +2,12 @@ import { useRouter } from "next/router";
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import { PaymentSuccessContent } from "@/components/payment/PaymentSuccessContent";
-import { getIconVariant, parseFeaturesParam } from "@/lib/paymentHelpers";
+import { parseFeaturesParam } from "@/lib/paymentHelpers";
 
 /**
  * Payment Success (Payment2) – แสดงหลังชำระเงินสำเร็จ
  * Mobile: คอลัมน์เดียว | Desktop: สองคอลัมน์ (ซ้าย: ข้อความ+ปุ่ม, ขวา: การ์ดแพ็กเกจ)
- * รับข้อมูลจาก query: packageName, amount, startDate, nextBillingDate, features (optional JSON)
+ * รับข้อมูลจาก query: packageName, amount, startDate, nextBillingDate, features (optional JSON), iconUrl (จาก checkout)
  */
 export default function PaymentSuccessPage() {
   const router = useRouter();
@@ -18,6 +18,7 @@ export default function PaymentSuccessPage() {
     startDate,
     nextBillingDate,
     features: featuresParam,
+    iconUrl,
   } = router.query;
 
   const defaultFeatures = [
@@ -25,7 +26,7 @@ export default function PaymentSuccessPage() {
     "Up to 50 Merry per day",
   ];
   const features = parseFeaturesParam(featuresParam, defaultFeatures);
-  const iconVariant = getIconVariant(packageName);
+  const iconUrlResolved = typeof iconUrl === "string" ? iconUrl : null;
 
   const handleBackToHome = () => router.push("/");
   const handleCheckMembership = () => router.push("/membership");
@@ -43,7 +44,7 @@ export default function PaymentSuccessPage() {
           new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         }
         features={features}
-        iconVariant={iconVariant}
+        iconUrl={iconUrlResolved}
         onBackToHome={handleBackToHome}
         onCheckMembership={handleCheckMembership}
       />

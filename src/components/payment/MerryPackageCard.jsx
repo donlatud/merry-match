@@ -1,8 +1,8 @@
 import { PrimaryButton } from "@/components/commons/button/PrimaryButton";
-import { PACKAGE_ICON_VARIANTS } from "@/constants/packageIcons";
 
 /**
  * Single Merry Package card
+ * ใช้ iconUrl จาก API (เหมือน MembershipContent) แทน PACKAGE_ICON_VARIANTS
  *
  * @param {{
  *   id: number;
@@ -11,14 +11,14 @@ import { PACKAGE_ICON_VARIANTS } from "@/constants/packageIcons";
  *   priceLabel?: string;
  *   limitText: string;
  *   features: string[];
- *   iconVariant?: "basic" | "platinum" | "premium";
+ *   iconUrl?: string | null;
  *   onChoosePackage?: (selected: {
  *     id: number;
  *     name: string;
  *     price: string;
  *     limitText: string;
  *     features: string[];
- *     iconVariant?: "basic" | "platinum" | "premium";
+ *     iconUrl?: string | null;
  *   }) => void;
  *   isCheckingOut?: boolean;
  * }} props
@@ -30,21 +30,21 @@ export function MerryPackageCard({
   priceLabel = "/Month",
   limitText,
   features,
-  iconVariant = "basic",
+  iconUrl = null,
   onChoosePackage,
   isCheckingOut = false,
 }) {
-  const icon = PACKAGE_ICON_VARIANTS[iconVariant] ?? PACKAGE_ICON_VARIANTS.basic;
-
   return (
     <article className="flex h-full flex-col justify-between rounded-[24px] border border-gray-400 bg-white lg:min-w-[357px] lg:min-h-[438px]">
       <div className="flex flex-col gap-4 p-4 lg:gap-6 lg:p-10">
-        <div className="rounded-[16px] bg-gray-100 h-[60px] w-[60px] p-3">
-          <img
-            src={icon.src}
-            alt={icon.alt}
-            className="h-[36px] w-[36px]"
-          />
+        <div className="rounded-[16px] bg-gray-100 h-[60px] w-[60px] p-3 flex items-center justify-center">
+          {iconUrl ? (
+            <img
+              src={iconUrl}
+              alt=""
+              className="h-[36px] w-[36px] object-contain"
+            />
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-2">
@@ -94,7 +94,7 @@ export function MerryPackageCard({
                 price,
                 limitText,
                 features,
-                iconVariant,
+                iconUrl: iconUrl ?? undefined,
               })
             }
           >
