@@ -22,8 +22,8 @@ export const swipeController = {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      if (!["LIKE", "PASS"].includes(status)) {
-        return res.status(400).json({ error: "Invalid status. Must be LIKE or PASS" });
+      if (!["LIKE", "DISLIKE"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be LIKE or DISLIKE" });
       }
 
       // เรียก Service Layer

@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { motion } from "framer-motion";
 import MemberNavDropdown from "@/components/MemberNavDropdown";
 import NotificationDropdown from "@/components/notifications/NotificationDropdown";
-import { ButtonMerry } from "@/components/commons/button/IconButton";
+import { ButtonMerry, ButtonPass } from "@/components/commons/button/IconButton";
 import { ProfilePopup } from "@/components/profilePopup/ProfilePopup";
 import MerryMatchModal from "@/components/matching/MerryMatchModal";
 import { useNotificationBadge } from "@/hooks/notifications/useNotificationBadge";
@@ -15,10 +16,10 @@ import {
   hasActiveMembership,
   isPremiumMembership as isPremiumMembershipForSubscription,
 } from "@/lib/membershipHelpers";
-import { supabase } from "@/providers/supabase.provider";
 
 export default function MemberNavBar({ onLogout }) {
   const { user } = useAuth();
+  const router = useRouter();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -26,16 +27,21 @@ export default function MemberNavBar({ onLogout }) {
   const [me, setMe] = useState(null);
   const [membershipResolved, setMembershipResolved] = useState(false);
   const [matchModalOpenFromNotif, setMatchModalOpenFromNotif] = useState(false);
-  const [matchedProfileIdFromNotif, setMatchedProfileIdFromNotif] = useState(null);
+  const [matchedProfileIdFromNotif, setMatchedProfileIdFromNotif] =
+    useState(null);
   const [matchedProfileFromNotif, setMatchedProfileFromNotif] = useState(null);
   const mobileNotifRef = useRef(null);
   const desktopNotifRef = useRef(null);
   const profileDropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
+  const [matchingPopupId, setMatchingPopupId] = useState(null);
+  const [matchingSwipeSubmitting, setMatchingSwipeSubmitting] = useState(false);
 
-  const { hasUnread: hasUnreadNotifications, refresh: fetchUnreadForBadge, markSeen: markNotificationsSeen } = useNotificationBadge({
-    userId: user?.id,
-  });
+  const {
+    hasUnread: hasUnreadNotifications,
+    refresh: fetchUnreadForBadge,
+    markSeen: markNotificationsSeen,
+  } = useNotificationBadge({ userId: user?.id });
 
   const hasActiveMembershipState = hasActiveMembership(me?.subscription);
   const isPremiumMembership = isPremiumMembershipForSubscription(
@@ -45,13 +51,11 @@ export default function MemberNavBar({ onLogout }) {
 
   useEffect(() => {
     const controller = new AbortController();
-
     const fetchProfileImage = async () => {
       if (!user?.id) {
         setProfileImageUrl(null);
         return;
       }
-
       try {
         const response = await apiClient.get("/me/profile-image", {
           signal: controller.signal,
@@ -64,45 +68,31 @@ export default function MemberNavBar({ onLogout }) {
         }
       }
     };
-
     fetchProfileImage();
-
-    return () => {
-      controller.abort();
-    };
+    return () => controller.abort();
   }, [user?.id]);
 
   useEffect(() => {
     const controller = new AbortController();
-
     const fetchMembership = async () => {
       if (!user?.id) {
         setMe(null);
         setMembershipResolved(false);
         return;
       }
-
       try {
         const response = await apiClient.get("/me", {
           signal: controller.signal,
         });
         setMe(response.data ?? null);
       } catch (error) {
-        if (error.name !== "CanceledError") {
-          setMe(null);
-        }
+        if (error.name !== "CanceledError") setMe(null);
       } finally {
-        if (!controller.signal.aborted) {
-          setMembershipResolved(true);
-        }
+        if (!controller.signal.aborted) setMembershipResolved(true);
       }
     };
-
     fetchMembership();
-
-    return () => {
-      controller.abort();
-    };
+    return () => controller.abort();
   }, [user?.id]);
 
   const userInitials = (user?.username || "MM").slice(0, 2).toUpperCase();
@@ -141,7 +131,6 @@ export default function MemberNavBar({ onLogout }) {
       />
     );
 
-  // Fetch profile for match modal (จาก notification)
   useEffect(() => {
     if (!matchModalOpenFromNotif || !matchedProfileIdFromNotif) {
       setMatchedProfileFromNotif(null);
@@ -157,17 +146,16 @@ export default function MemberNavBar({ onLogout }) {
         setMatchedProfileFromNotif({
           id: d?.id,
           name: d?.name ?? "Someone",
-          image: Array.isArray(d?.images) ? d.images[0] ?? null : null,
+          image: Array.isArray(d?.images) ? (d.images[0] ?? null) : null,
         });
       })
       .catch((err) => {
-        if (err.name !== "CanceledError") {
+        if (err.name !== "CanceledError")
           setMatchedProfileFromNotif({
             id: matchedProfileIdFromNotif,
             name: "Someone",
             image: null,
           });
-        }
       });
     return () => controller.abort();
   }, [matchModalOpenFromNotif, matchedProfileIdFromNotif]);
@@ -178,7 +166,6 @@ export default function MemberNavBar({ onLogout }) {
     setMatchedProfileFromNotif(null);
   }, []);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       const clickedInsideNotif =
@@ -186,34 +173,82 @@ export default function MemberNavBar({ onLogout }) {
           mobileNotifRef.current.contains(event.target)) ||
         (desktopNotifRef.current &&
           desktopNotifRef.current.contains(event.target));
-
       if (!clickedInsideNotif) {
         if (notifOpen) markNotificationsSeen();
         setNotifOpen(false);
       }
-
       if (
         profileDropdownRef.current &&
         !profileDropdownRef.current.contains(event.target)
-      ) {
+      )
         setProfileOpen(false);
-      }
-
       if (
         mobileMenuRef.current &&
         !mobileMenuRef.current.contains(event.target)
-      ) {
+      )
         setMobileMenuOpen(false);
-      }
     }
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [notifOpen, markNotificationsSeen]);
 
-  // Close mobile menu when clicking outside (handled by backdrop now)
+  // ✅ เปิด chat overlay บน path ปัจจุบัน — ไม่ hardcode ไป matchingpage
+  const handleChatClick = () => {
+    router.push(
+      {
+        pathname: router.pathname,
+        query: { ...router.query, showChat: "true" },
+      },
+      undefined,
+      { shallow: true },
+    );
+  };
+
+  // ✅ ปิด chat overlay กลับ path ปัจจุบัน — ลบแค่ showChat ออก
+  const handleChatClose = () => {
+    const { showChat, ...restQuery } = router.query;
+    router.push({ pathname: router.pathname, query: restQuery }, undefined, {
+      shallow: true,
+    });
+  };
+
+  const isChatOpen = router.query.showChat === "true";
+
+  useEffect(() => {
+    const handler = (e) => setMatchingPopupId(e.detail.profileId);
+    window.addEventListener("matching:viewProfile", handler);
+    return () => window.removeEventListener("matching:viewProfile", handler);
+  }, []);
+
+  const handleMatchingSwipe = useCallback(
+    (direction) => {
+      if (!matchingPopupId) return;
+      setMatchingSwipeSubmitting(true);
+      window.dispatchEvent(
+        new CustomEvent("matching:swipe", {
+          detail: { direction, profileId: matchingPopupId },
+        }),
+      );
+      setMatchingPopupId(null);
+      setMatchingSwipeSubmitting(false);
+    },
+    [matchingPopupId],
+  );
+
+  const matchingPopupLeftButton = (
+    <ButtonPass
+      onClick={() => handleMatchingSwipe("left")}
+      disabled={matchingSwipeSubmitting}
+      className="w-15 h-15 [&_img]:w-10 [&_img]:h-10 shadow-button"
+    />
+  );
+  const matchingPopupRightButton = (
+    <ButtonMerry
+      onClick={() => handleMatchingSwipe("right")}
+      disabled={matchingSwipeSubmitting}
+      className="w-15 h-15 [&_img]:w-12 [&_img]:h-10 shadow-button"
+    />
+  );
 
   return (
     <>
@@ -229,13 +264,46 @@ export default function MemberNavBar({ onLogout }) {
         onClose={closeMatchModalFromNotif}
         matchedProfile={matchedProfileFromNotif}
       />
-      {/* Mobile: Chat + Notification + Hamburger */}
+      <ProfilePopup
+        open={!!matchingPopupId}
+        onClose={() => setMatchingPopupId(null)}
+        id={matchingPopupId}
+        leftButton={matchingPopupLeftButton}
+        rightButton={matchingPopupRightButton}
+      />
+
+      {/* Mobile Chat Overlay — render ที่นี่เพื่อให้ทำงานได้ทุกหน้า */}
+      {isChatOpen && (
+        <div className="fixed inset-0 z-[150] bg-white lg:hidden flex flex-col">
+          <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
+            <h2 className="text-body2 font-bold text-gray-900">
+              Matches & Chats
+            </h2>
+            <button
+              onClick={handleChatClose}
+              className="p-2 hover:bg-gray-100 rounded-full cursor-pointer"
+            >
+              <img
+                src="/merry_icon/icon-close.svg"
+                alt="Close"
+                className="w-6 h-6"
+              />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            {/* LeftSidebar จาก context — ไม่ fetch ใหม่ */}
+            <ChatOverlaySidebar />
+          </div>
+        </div>
+      )}
+
+      {/* Mobile */}
       <div className="flex items-center gap-5 lg:hidden">
         <div className="flex items-center gap-3">
-          {/* TODO: link to chat — ใส่ตรงนี้ */}
-          <Link
-            // แทนที่จะเป็น /chat เฉยๆ ให้แก้เป็นแบบนี้:
-            href="/matchingpage?showChat=true"
+          {/* ✅ ใช้ button + handleChatClick */}
+          <button
+            type="button"
+            onClick={handleChatClick}
             className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 hover:bg-purple-100 cursor-pointer"
             aria-label="Chat"
           >
@@ -244,18 +312,14 @@ export default function MemberNavBar({ onLogout }) {
               alt=""
               className="w-3.5 h-3.5"
             />
-          </Link>
+          </button>
 
-          {/* TODO: link to notifications — ใส่ตรงนี้ */}
           <div className="relative w-7 h-7" ref={mobileNotifRef}>
             {showNotifRing && (
               <motion.span
                 className="absolute inset-0 rounded-full ring-2 ring-purple-300 ring-offset-2 ring-offset-red-300 pointer-events-none"
                 aria-hidden
-                animate={{
-                  scale: [1, 0.9, 1],
-                  opacity: [0.2, 1, 0.2],
-                }}
+                animate={{ scale: [1, 0.9, 1], opacity: [0.2, 1, 0.2] }}
                 transition={{ repeat: Infinity, duration: 4 }}
               />
             )}
@@ -263,8 +327,7 @@ export default function MemberNavBar({ onLogout }) {
               type="button"
               onClick={() => {
                 setNotifOpen((prev) => {
-                  if (!prev) markNotificationsSeen();
-                  else markNotificationsSeen();
+                  markNotificationsSeen();
                   return !prev;
                 });
               }}
@@ -284,7 +347,6 @@ export default function MemberNavBar({ onLogout }) {
                 aria-hidden
               />
             )}
-
             {notifOpen && (
               <NotificationDropdown
                 variant="mobile"
@@ -298,7 +360,6 @@ export default function MemberNavBar({ onLogout }) {
           </div>
         </div>
 
-        {/* Mobile Menu Toggle */}
         <div className="relative" ref={mobileMenuRef}>
           <button
             type="button"
@@ -311,8 +372,6 @@ export default function MemberNavBar({ onLogout }) {
             <span className="block w-full h-0.5 bg-gray-700 rounded-full"></span>
             <span className="block w-full h-0.5 bg-gray-700 rounded-full"></span>
           </button>
-
-          {/* Mobile Dropdown Menu */}
           {mobileMenuOpen && (
             <MemberNavDropdown
               variant="mobile"
@@ -326,7 +385,7 @@ export default function MemberNavBar({ onLogout }) {
         </div>
       </div>
 
-      {/* Desktop: Start Matching + Membership + Notification + Profile */}
+      {/* Desktop */}
       <div className="hidden lg:flex items-center gap-11">
         <Link
           href="/matchingpage"
@@ -341,16 +400,12 @@ export default function MemberNavBar({ onLogout }) {
           Merry Membership
         </Link>
         <div className="flex items-center gap-3">
-          {/* TODO: Notifications dropdown — ใส่ตรงนี้ */}
           <div className="relative" ref={desktopNotifRef}>
             {showNotifRing && (
               <motion.span
                 className="absolute inset-0 rounded-full ring-2 ring-purple-300 ring-offset-2 ring-offset-red-300 pointer-events-none"
                 aria-hidden
-                animate={{
-                  scale: [1, 0.9, 1],
-                  opacity: [0.2, 1, 0.2],
-                }}
+                animate={{ scale: [1, 0.9, 1], opacity: [0.2, 1, 0.2] }}
                 transition={{ repeat: Infinity, duration: 3 }}
               />
             )}
@@ -358,8 +413,7 @@ export default function MemberNavBar({ onLogout }) {
               type="button"
               onClick={() => {
                 setNotifOpen((prev) => {
-                  if (!prev) markNotificationsSeen();
-                  else markNotificationsSeen();
+                  markNotificationsSeen();
                   return !prev;
                 });
               }}
@@ -379,7 +433,6 @@ export default function MemberNavBar({ onLogout }) {
                 aria-hidden
               />
             )}
-
             {notifOpen && (
               <NotificationDropdown
                 variant="desktop"
@@ -392,7 +445,6 @@ export default function MemberNavBar({ onLogout }) {
             )}
           </div>
 
-          {/* Profile dropdown */}
           <div className="relative" ref={profileDropdownRef}>
             <button
               type="button"
@@ -410,14 +462,12 @@ export default function MemberNavBar({ onLogout }) {
                 <AvatarFallback>{userInitials}</AvatarFallback>
               </Avatar>
             </button>
-
-            {/* Profile Dropdown Menu */}
             {profileOpen && (
               <MemberNavDropdown
                 variant="desktop"
                 onClose={() => setProfileOpen(false)}
                 onLogout={onLogout}
-              hasActiveMembership={hasActiveMembershipState}
+                hasActiveMembership={hasActiveMembershipState}
                 isPremiumMembership={isPremiumMembership}
                 membershipResolved={membershipResolved}
               />
@@ -427,4 +477,34 @@ export default function MemberNavBar({ onLogout }) {
       </div>
     </>
   );
+}
+
+// ── ChatOverlaySidebar — fetch matches ตอนเปิด overlay ──
+function ChatOverlaySidebar() {
+  const [matches, setMatches] = useState([]);
+  const [matchesLoading, setMatchesLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMatches = async () => {
+      try {
+        const { data: profileResult } = await apiClient.get(
+          "/matching/profiles?limit=1",
+        );
+        const profileId = profileResult?.myProfileId;
+        if (!profileId) return;
+        const { data: result } = await apiClient.get(
+          `/matching/matches?profileId=${profileId}`,
+        );
+        if (result.success) setMatches(result.data);
+      } catch (err) {
+        console.error("Failed to fetch matches:", err);
+      } finally {
+        setMatchesLoading(false);
+      }
+    };
+    fetchMatches();
+  }, []);
+
+  const LeftSidebar = require("@/components/matching/LeftSidebar").default;
+  return <LeftSidebar matches={matches} loading={matchesLoading} />;
 }
