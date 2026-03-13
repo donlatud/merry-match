@@ -8,10 +8,9 @@ import { errorMiddleware } from "@/middlewares/error.middleware";
  * GET /api/membership/history
  * คืน billing history ของ user ที่ login
  *
- * หมายเหตุ (Phase 1):
- * - ใช้ข้อมูลจาก schema เดิมก่อน
- * - packageName ของรายการย้อนหลังยังอิง package ปัจจุบันของ subscription
- *   จนกว่าจะมี snapshot fields ใน payment_transactions
+ * ดึง package name ต่อรายการจาก relation payment_transactions.package_id → packages
+ * - ถ้า transaction มี package_id จะใช้ชื่อจาก package นั้น (ถูกต้องตามประวัติ)
+ * - ถ้าไม่มี (ข้อมูลเก่า) ใช้ชื่อแพ็กปัจจุบันของ subscription เป็น fallback
  */
 export default async function handler(req, res) {
   try {
@@ -25,8 +24,7 @@ export default async function handler(req, res) {
       throw err;
     }
 
-    // ดึง profile ของ user ปัจจุบัน แล้วอ่าน subscription ปัจจุบันพร้อม transaction ที่จ่ายสำเร็จ
-    // ใน Phase 1 ใช้ความสัมพันธ์เดิมจาก schema ก่อน โดยยังไม่เพิ่ม snapshot fields
+    // ดึง subscription ปัจจุบัน + transactions ที่จ่ายสำเร็จ พร้อม relation package (สำหรับ package_id ที่มี)
     const profile = await prisma.profile.findUnique({
       where: { user_id: userId },
       select: {
@@ -34,9 +32,7 @@ export default async function handler(req, res) {
           select: {
             end_date: true,
             package: {
-              select: {
-                name: true,
-              },
+              select: { name: true },
             },
             transactions: {
               where: {
@@ -53,6 +49,10 @@ export default async function handler(req, res) {
                 status: true,
                 paid_at: true,
                 created_at: true,
+                package_id: true,
+                package: {
+                  select: { name: true },
+                },
               },
             },
           },
@@ -65,12 +65,11 @@ export default async function handler(req, res) {
     // nextBillingDate ใช้ end_date ของ subscription ปัจจุบัน
     const nextBillingDate = subscription?.end_date?.toISOString?.() ?? null;
 
-    // Phase 1: packageName ของ history ใช้ชื่อแพ็กปัจจุบันของ subscription ก่อน
-    // ถ้ามี change plan ภายหลัง ชื่อแพ็กย้อนหลังอาจไม่ตรง 100% จนกว่าจะมี snapshot fields
-    const packageName = subscription?.package?.name ?? null;
+    // ชื่อแพ็กของ subscription ปัจจุบัน — ใช้เป็น fallback เมื่อ transaction ยังไม่มี package_id (ข้อมูลเก่า)
+    const subscriptionPackageName = subscription?.package?.name ?? null;
 
-    // map transaction ให้เป็น response shape ที่หน้า /membership ใช้ได้ทันที
-    // date: ใช้ paid_at ก่อน ถ้าไม่มีค่อย fallback ไป created_at
+    // map transaction → shape ที่หน้า /membership ใช้ (date, packageName, amount, currency, status)
+    // packageName: จาก transaction.package (Phase 2) ถ้ามี package_id ไม่ก็ใช้ subscription package name
     const transactions = Array.isArray(subscription?.transactions)
       ? subscription.transactions.map((transaction) => ({
           id: transaction.id,
@@ -78,7 +77,8 @@ export default async function handler(req, res) {
             transaction.paid_at?.toISOString?.() ??
             transaction.created_at?.toISOString?.() ??
             null,
-          packageName,
+          packageName:
+            transaction.package?.name ?? subscriptionPackageName ?? null,
           amount:
             transaction.amount?.toString?.() ??
             String(transaction.amount ?? ""),

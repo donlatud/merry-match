@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { SubscriptionStatus } from "@prisma/client";
+import { hasActiveMembership } from "@/lib/membershipHelpers";
 
 /**
  * ดึง subscription ปัจจุบันของ user (ถ้ามี)
@@ -25,20 +25,16 @@ export async function getCurrentUserSubscription(userId) {
 }
 
 /**
- * ตรวจสอบว่า subscription ยังใช้งานได้หรือไม่ (ACTIVE และยังไม่หมดอายุ)
+ * ตรวจสอบว่า subscription ยังใช้งานได้หรือไม่
+ * - ACTIVE หรือ CANCELLED (ยกเลิกแล้วแต่ยังไม่ถึง end_date) และยังไม่หมดอายุ
+ * ใช้ logic ร่วมกับ hasActiveMembership จาก lib/membershipHelpers
  *
  * @param {import("@prisma/client").UserSubscription | null} subscription
- * @param {Date} [now]
+ * @param {Date} [now] - ไม่ใช้แล้ว (คงไว้เพื่อความ backward compatible)
  * @returns {boolean}
  */
-export function isSubscriptionActiveAndValid(subscription, now = new Date()) {
-  if (!subscription) return false;
-  if (subscription.status !== SubscriptionStatus.ACTIVE) return false;
-
-  if (!subscription.end_date) return false;
-
-  const end = subscription.end_date instanceof Date ? subscription.end_date : new Date(subscription.end_date);
-  return end.getTime() > now.getTime();
+export function isSubscriptionActiveAndValid(subscription) {
+  return hasActiveMembership(subscription);
 }
 
 /**

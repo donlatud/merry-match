@@ -1,3 +1,4 @@
+import { hasActiveMembership } from "@/lib/membershipHelpers";
 import { prisma } from "@/lib/prisma";
 import { authMiddleware } from "@/middlewares/auth.middleware";
 import { allowMethods } from "@/middlewares/method.middleware";
@@ -46,7 +47,7 @@ export default async function handler(req, res) {
 
     const myProfileId = me.id;
 
-    const [outgoingLikes, incomingLikes, activeSubscription] = await Promise.all([
+    const [outgoingLikes, incomingLikes, subscription] = await Promise.all([
       prisma.swipe.findMany({
         where: {
           requester_id: myProfileId,
@@ -68,10 +69,7 @@ export default async function handler(req, res) {
         },
       }),
       prisma.userSubscription.findFirst({
-        where: {
-          profile_id: myProfileId,
-          status: "ACTIVE",
-        },
+        where: { profile_id: myProfileId },
         include: {
           package: {
             select: { limit_matching: true, name: true },
@@ -161,8 +159,9 @@ export default async function handler(req, res) {
         },
       },
     });
-    const dailyLimit = activeSubscription?.package?.limit_matching ?? 20;
-    const subscriptionPackageName = activeSubscription?.package?.name ?? null;
+    const hasAccess = subscription && hasActiveMembership(subscription);
+    const dailyLimit = hasAccess ? (subscription?.package?.limit_matching ?? 20) : 20;
+    const subscriptionPackageName = hasAccess ? (subscription?.package?.name ?? null) : null;
 
     return res.status(200).json({
       merryToYou,

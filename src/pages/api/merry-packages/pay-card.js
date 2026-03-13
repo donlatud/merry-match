@@ -95,10 +95,11 @@ export default async function handler(req, res) {
     }
 
     const provider = getPaymentGatewayProvider();
+    let chargeCustomerId = subscription.omise_customer_id || null;
 
     // Auto-subscription: ensure Omise customer exists (card only).
-    // We do this for both first purchase and change-plan so future recurring charges can be linked.
-    // Subscription creation will happen after charge success (in webhook) using stored omise_customer_id.
+    // เราทำทั้ง first purchase และ change-plan เพื่อให้ recurring charges ผูกกับ customer ตัวเดียวกันได้
+    // การสร้าง Omise subscription จะทำใน webhook โดยใช้ omise_customer_id ที่เซ็ตไว้
     if (!subscription?.omise_customer_id && typeof provider.createCustomer === "function") {
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -112,6 +113,7 @@ export default async function handler(req, res) {
           description: `MerryMatch user ${userId}`,
         });
         if (customer?.id) {
+          chargeCustomerId = customer.id;
           await prisma.userSubscription.update({
             where: { id: subscription.id },
             data: { omise_customer_id: customer.id },
@@ -120,11 +122,10 @@ export default async function handler(req, res) {
       }
     }
 
-    const result = await provider.createCardCharge({
+    const chargeParams = {
       amount,
       currency,
       description,
-      cardToken,
       metadata: {
         subscriptionId: subscription.id,
         packageId: pkg.id,
@@ -133,9 +134,16 @@ export default async function handler(req, res) {
         targetPackageId: isChangePlan ? pkg.id : undefined,
         autoRenew: !isChangePlan, // business rule: first purchase enables auto-renew by default
       },
-    });
+    };
+
+    const result = await provider.createCardCharge(
+      chargeCustomerId
+        ? { ...chargeParams, customerId: chargeCustomerId }
+        : { ...chargeParams, cardToken }
+    );
 
     // For non-failed charges, lock the subscription to this charge and create a pending transaction.
+    // บันทึก package_id ลง payment_transactions เพื่อใช้แสดง billing history 
     if (result?.id && result.status !== "failed") {
       const chargeId = result.id;
       const gateway = "omise";
@@ -158,12 +166,46 @@ export default async function handler(req, res) {
             external_charge_id: String(chargeId),
             status: PaymentTransactionStatus.PENDING,
             paid_at: null,
+            package_id: pkg.id, // แพ็กที่ชำระ ณ ตอนสร้าง transaction (first purchase / change-plan)
           },
         }),
       ]);
     }
 
     if (result.status === "successful") {
+      // อัปเดต subscription + transaction ทันทีเมื่อชำระสำเร็จแบบ synchronous (ถ้า webhook มาทีหลังจะอัปเดตซ้ำด้วยค่าเดียวกัน — ไม่ขัดแย้ง)
+      const chargeId = result.id;
+      const paidAt = new Date();
+      const startDate = paidAt;
+      const endDate = new Date(paidAt);
+      const interval = String(pkg.billing_interval || "month").toLowerCase();
+      if (interval === "year") endDate.setFullYear(endDate.getFullYear() + 1);
+      else endDate.setMonth(endDate.getMonth() + 1);
+
+      await prisma.$transaction([
+        prisma.userSubscription.update({
+          where: { id: subscription.id },
+          data: {
+            status: SubscriptionStatus.ACTIVE,
+            auto_renew: true,
+            cancelled_at: null,
+            start_date: startDate,
+            end_date: endDate,
+            paid_at: paidAt,
+            package_id: pkg.id,
+            external_charge_id: chargeId,
+            gateway: "omise",
+          },
+        }),
+        prisma.paymentTransaction.updateMany({
+          where: { external_charge_id: String(chargeId) },
+          data: {
+            status: PaymentTransactionStatus.PAID,
+            paid_at: paidAt,
+          },
+        }),
+      ]);
+
       return res.status(200).json(buildSuccessPayload(pkg));
     }
 

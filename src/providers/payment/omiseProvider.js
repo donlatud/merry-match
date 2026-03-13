@@ -130,7 +130,10 @@ export function createOmisePaymentGatewayProvider() {
       const currency = normalizeCurrency(params.currency);
       const amount = parseAmountToMinorUnits(params.amount, currency);
 
-      if (!params.cardToken) {
+      const hasCustomer = typeof params.customerId === "string" && params.customerId.trim().length > 0;
+      const hasCardToken = typeof params.cardToken === "string" && params.cardToken.trim().length > 0;
+
+      if (!hasCustomer && !hasCardToken) {
         const err = new Error("MISSING_CARD_TOKEN");
         err.statusCode = 400;
         throw err;
@@ -142,7 +145,9 @@ export function createOmisePaymentGatewayProvider() {
             amount,
             currency,
             description: params.description || "MerryMatch package charge",
-            card: params.cardToken,
+            ...(hasCustomer
+              ? { customer: params.customerId }
+              : { card: params.cardToken }),
             ...(params.metadata ? { metadata: params.metadata } : {}),
           },
           cb
