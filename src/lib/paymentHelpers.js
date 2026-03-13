@@ -10,23 +10,13 @@ export function parseFeaturesParam(featuresParam, fallbackFeatures) {
   return fallbackFeatures;
 }
 
-/**
- * @param {string} packageName
- * @returns {"basic" | "platinum" | "premium"}
- */
-export function getIconVariant(packageName) {
-  const nameLower = String(packageName || "").toLowerCase();
-  if (nameLower === "platinum") return "platinum";
-  if (nameLower === "premium") return "premium";
-  return "basic";
-}
-
 const DEFAULT_LIMIT_TEXT = "“Merry” more than a daily limited";
 
 /**
  * Maps `/api/package` response item into UI model for `MerryPackageCard`.
  * @param {any} pkg
- * @returns {{ id: number; name: string; price: string; limitText: string; features: string[]; iconVariant: "basic" | "platinum" | "premium" }}
+ * ใช้ icon_url จาก API (เหมือน MembershipContent) แทน icon variant
+ * @returns {{ id: number; name: string; price: string; limitText: string; features: string[]; iconUrl: string | null }}
  */
 export function mapPackageFromApi(pkg) {
   const priceStr =
@@ -49,7 +39,7 @@ export function mapPackageFromApi(pkg) {
     price: priceStr,
     limitText,
     features,
-    iconVariant: getIconVariant(pkg?.name),
+    iconUrl: pkg?.icon_url ?? null,
   };
 }
 

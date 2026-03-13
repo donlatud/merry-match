@@ -36,6 +36,8 @@ function buildSuccessUrl(data, fallback) {
   if (Array.isArray(features) && features.length > 0) {
     params.set("features", JSON.stringify(features));
   }
+  const iconUrl = data.iconUrl ?? fallback.iconUrl;
+  if (iconUrl) params.set("iconUrl", iconUrl);
   return `/payment/success?${params.toString()}`;
 }
 
@@ -142,8 +144,14 @@ export function usePaymentCheckout() {
   const useOmiseScript = PAYMENT_GATEWAY === "omise" && !!OMISE_PUBLIC_KEY;
 
   const fallback = useMemo(
-    () => ({ packageName, amount, currency, features }),
-    [packageName, amount, currency, features]
+    () => ({
+      packageName,
+      amount,
+      currency,
+      features,
+      iconUrl: typeof router.query.iconUrl === "string" ? router.query.iconUrl : undefined,
+    }),
+    [packageName, amount, currency, features, router.query.iconUrl]
   );
 
   // --- QR charge creation ---
