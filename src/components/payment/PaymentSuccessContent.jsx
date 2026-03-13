@@ -30,10 +30,10 @@ export function PaymentSuccessContent({
 }) {
   return (
     <main
-      className="bg-utility-bg-main flex flex-col mb-22 lg:h-[936px]"
+      className="flex flex-col mb-22 lg:h-[936px]"
       aria-label="Payment success"
     >
-      <div className="flex flex-col justify-between px-4 py-10 lg:flex-row lg:gap-0 lg:px-[163px] lg:py-0 2xl:px-[356px]">
+      <div className="flex flex-col justify-between gap-10 px-4 py-10 lg:flex-row lg:gap-0 lg:px-[163px] lg:py-0 2xl:px-[356px]">
         <section
           className="order-1 flex flex-col gap-[40px] w-full lg:order-0 lg:gap-[80px] lg:w-[641px] lg:h-[393px] lg:pt-[118px]"
           aria-label="Payment success message"
@@ -46,7 +46,7 @@ export function PaymentSuccessContent({
                 className="w-full h-full"
               />
             </div>
-            <div className="text-tagline font-semibold text-beige-700 pt-10">
+            <div className="text-tagline font-semibold text-beige-700 py-2.5">
               PAYMENT SUCCESS
             </div>
 
