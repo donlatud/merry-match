@@ -1,4 +1,5 @@
 // src/services/matching/matching.service.js
+import { hasActiveMembership } from "@/lib/membershipHelpers";
 import { profileRepository } from "@/repositories/matching/profile.repository";
 import { swipeRepository } from "@/repositories/matching/swipe.repository";
 
@@ -68,9 +69,13 @@ export const matchingService = {
 
   /**
    * คำนวณ Swipe Limit และจำนวนที่เหลือ
+   * ใช้ limit จาก package เฉพาะเมื่อ subscription ยังมีสิทธิ์ (ACTIVE หรือ CANCELLED ที่ end_date > now)
    */
   calculateSwipeLimit(profile, swipeUsedToday) {
-    const rawLimit = profile.subscription?.package?.limit_matching ?? 20;
+    const hasAccess = profile.subscription && hasActiveMembership(profile.subscription);
+    const rawLimit = hasAccess
+      ? (profile.subscription?.package?.limit_matching ?? 20)
+      : 20;
 
     const swipeLimit = rawLimit === 999 ? "Unlimited" : rawLimit;
     const swipeRemaining = rawLimit === 999 

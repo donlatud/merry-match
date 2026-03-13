@@ -6,6 +6,7 @@ import axios from "axios";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/hooks/login/useAuth";
 import { mapPackageFromApi } from "@/lib/paymentHelpers";
+import { hasAccessFromMembershipResponse } from "@/lib/membershipHelpers";
 
 function buildCheckoutUrl({
   subscriptionId,
@@ -33,7 +34,13 @@ function buildCheckoutUrl({
 }
 
 /**
- * Encapsulates packages + membership loading and checkout/change-plan handlers.
+ * Hook สำหรับโหลดแพ็กเกจ + สถานะ membership และจัดการ flow ชำระเงิน / เปลี่ยนแพ็ก
+ *
+ * การทำงานหลัก:
+ * 1. โหลดข้อมูล: เรียก /api/package และ /membership/me (ถ้า login แล้ว) พร้อมกัน
+ * 2. สถานะสมาชิก: คำนวณ isActive จาก membership (ACTIVE หรือ CANCELLED ที่ยังไม่หมดอายุ)
+ * 3. เลือกแพ็กใหม่: ถ้าไม่มีสมาชิก → ไป checkout ตรง; ถ้ามีแล้ว → เปิด modal เปลี่ยนแผน แล้วไป checkout แบบ change-plan
+ * 4. คืนค่า: packages, membership, loading, error, handlers และ state ของ modal
  */
 export function usePackageSelection() {
   const router = useRouter();
@@ -50,12 +57,25 @@ export function usePackageSelection() {
   const [changePlanModalOpen, setChangePlanModalOpen] = useState(false);
   const [pendingChangePackage, setPendingChangePackage] = useState(null);
 
-  const isActive = membership?.status === "ACTIVE" && membership?.expireAt;
+  // เก็บ "เวลาปัจจุบัน" ใน state แทนเรียก Date.now() ใน render (หลีกเลี่ยง impure call)
+  // อัปเดตทุก 1 นาที เพื่อให้ isActive ไม่อิงค่าเก่าเมื่อ user อยู่หน้านาน
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // สมาชิก "ยังใช้สิทธิ์ได้" = ใช้ helper ร่วมจาก lib (logic เดียวกับ backend)
+  const isActive = useMemo(
+    () => hasAccessFromMembershipResponse(membership, now),
+    [membership, now]
+  );
   const currentPackageName = useMemo(
     () => (typeof membership?.packageName === "string" ? membership.packageName : ""),
-    [membership?.packageName]
+    [membership]
   );
 
+  // โหลดรายการแพ็ก + สถานะ membership (ถ้า login) ตอน mount หรือเมื่อ user?.id เปลี่ยน
   useEffect(() => {
     const requests = [axios.get("/api/package")];
     if (user?.id) {

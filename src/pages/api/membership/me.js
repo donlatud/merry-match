@@ -1,3 +1,4 @@
+import { SubscriptionStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { authMiddleware } from "@/middlewares/auth.middleware";
 import { allowMethods } from "@/middlewares/method.middleware";
@@ -82,7 +83,24 @@ export default async function handler(req, res) {
       throw err;
     }
 
-    const subscription = profile.subscription;
+    let subscription = profile.subscription;
+
+    // Lazy update: ถ้า status เป็น CANCELLED และ end_date ผ่านไปแล้ว ให้อัปเดตเป็น EXPIRED ใน DB
+    // (ไม่ต้องใช้ cron; อัปเดตตอนมีคนเรียก API นี้)
+    if (
+      subscription?.id &&
+      subscription.status === SubscriptionStatus.CANCELLED &&
+      subscription.end_date
+    ) {
+      const end = subscription.end_date instanceof Date ? subscription.end_date : new Date(subscription.end_date);
+      if (end.getTime() < Date.now()) {
+        await prisma.userSubscription.update({
+          where: { id: subscription.id },
+          data: { status: SubscriptionStatus.EXPIRED },
+        });
+        subscription = { ...subscription, status: SubscriptionStatus.EXPIRED };
+      }
+    }
 
     // ชุด field เดิม: คงไว้เพื่อไม่ให้กระทบ consumer เก่า เช่น usePackageSelection
     const packageName = subscription?.package?.name ?? null;
@@ -93,10 +111,12 @@ export default async function handler(req, res) {
 
     // ชุด field ใหม่: เพิ่มสำหรับหน้า /membership
     // แยกไว้ใน object membership เพื่อไม่ชนกับ response shape เดิม
+    // cancelledAt: มีค่าเมื่อ user กดยกเลิก (ยังใช้สิทธิ์ได้จนถึง end_date, status ยัง ACTIVE)
     const membership = subscription
       ? {
           startDate: subscription.start_date?.toISOString?.() ?? null,
           nextBillingDate: subscription.end_date?.toISOString?.() ?? null,
+          cancelledAt: subscription.cancelled_at?.toISOString?.() ?? null,
           package: subscription.package
             ? {
                 id: subscription.package.id,

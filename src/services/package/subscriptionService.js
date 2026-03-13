@@ -159,7 +159,13 @@ export async function validatePaymentRequest({ subscriptionId, targetPackageId, 
       throw err;
     }
   } else {
-    if (subscription.status !== SubscriptionStatus.ACTIVE) {
+    // Change-plan: อนุญาตทั้ง ACTIVE และ CANCELLED ที่ยังไม่หมดอายุ (end_date > now)
+    const canChangePlan =
+      (subscription.status === SubscriptionStatus.ACTIVE ||
+        subscription.status === SubscriptionStatus.CANCELLED) &&
+      subscription.end_date instanceof Date &&
+      subscription.end_date.getTime() > Date.now();
+    if (!canChangePlan) {
       const err = new Error("SUBSCRIPTION_NOT_ACTIVE");
       err.statusCode = 409;
       throw err;
@@ -251,8 +257,10 @@ export async function prepareChangePlan({ userId, targetPackageId }) {
   }
 
   const now = new Date();
+  // อนุญาตเปลี่ยนแผนทั้งเมื่อ ACTIVE และเมื่อ CANCELLED ที่ยังไม่หมดอายุ (ใช้สิทธิ์ได้จนถึง end_date)
   const isActiveAndValid =
-    currentSubscription.status === SubscriptionStatus.ACTIVE &&
+    (currentSubscription.status === SubscriptionStatus.ACTIVE ||
+      currentSubscription.status === SubscriptionStatus.CANCELLED) &&
     currentSubscription.end_date instanceof Date &&
     currentSubscription.end_date.getTime() > now.getTime();
 
@@ -458,9 +466,14 @@ export async function cancelPackage(userId) {
     }
   }
 
+  // ตั้ง status = CANCELLED (user ยังใช้สิทธิ์ได้จนถึง end_date — logic "มีสิทธิ์" ต้องเช็ค ACTIVE หรือ CANCELLED ที่ end_date > now)
   await prisma.userSubscription.update({
     where: { id: sub.id },
-    data: { auto_renew: false, cancelled_at: now },
+    data: {
+      auto_renew: false,
+      cancelled_at: now,
+      status: SubscriptionStatus.CANCELLED,
+    },
   });
 
   return {

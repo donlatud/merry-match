@@ -14,8 +14,11 @@ export async function findTransactionByExternalChargeId(externalChargeId) {
 
 /**
  * สร้างหรืออัปเดต PaymentTransaction จาก webhook (charge id เป็น unique key)
- * - ถ้ามีแล้ว: อัปเดต status + paid_at
- * - ถ้าไม่มี: สร้างใหม่ (ต้องมี subscription แล้ว)
+ * - ถ้ามีแล้ว: อัปเดต status + paid_at (+ package_id ถ้าส่งมา และ record ยังไม่มี — กรณี recurring)
+ * - ถ้าไม่มี: สร้างใหม่ (ต้องมี subscription แล้ว) พร้อม package_id ถ้ามี (ใช้แสดง billing history)
+ *
+ * @param {Object} params
+ * @param {number} [params.packageId] - id แพ็ก ณ ตอน charge (จาก metadata หรือ subscription)
  */
 export async function upsertTransactionFromWebhook({
   userSubscriptionId,
@@ -25,6 +28,7 @@ export async function upsertTransactionFromWebhook({
   gateway,
   status,
   paidAt,
+  packageId,
 }) {
   if (!externalChargeId) {
     const err = new Error("MISSING_EXTERNAL_CHARGE_ID");
@@ -40,6 +44,8 @@ export async function upsertTransactionFromWebhook({
     external_charge_id: externalChargeId ? String(externalChargeId) : null,
     status: status || PaymentTransactionStatus.PENDING,
     paid_at: paidAt ?? null,
+    // package_id: แพ็ก ณ ตอนจ่าย — ใช้แสดง billing history; ถ้าไม่มีจะเป็น null (ข้อมูลเก่า)
+    ...(packageId != null ? { package_id: packageId } : {}),
   };
 
   const existing = await prisma.paymentTransaction.findUnique({
@@ -47,12 +53,15 @@ export async function upsertTransactionFromWebhook({
   });
 
   if (existing) {
+    const updateData = {
+      status: data.status,
+      paid_at: data.paid_at,
+      // กรณี recurring: transaction อาจถูกสร้างจาก Omise โดยไม่มี package_id — เติมเมื่อ webhook มีค่า
+      ...(packageId != null ? { package_id: packageId } : {}),
+    };
     return prisma.paymentTransaction.update({
       where: { id: existing.id },
-      data: {
-        status: data.status,
-        paid_at: data.paid_at,
-      },
+      data: updateData,
     });
   }
 

@@ -102,6 +102,7 @@ export default async function handler(req, res) {
     });
 
     // Lock the subscription to this charge and create a pending transaction.
+    // บันทึก package_id ลง payment_transactions เพื่อใช้แสดง billing history
     const chargeId = qrCharge.id;
     const gateway = "omise";
     await prisma.$transaction([
@@ -123,6 +124,7 @@ export default async function handler(req, res) {
           external_charge_id: String(chargeId),
           status: PaymentTransactionStatus.PENDING,
           paid_at: null,
+          package_id: pkg.id, // แพ็กที่ชำระ ณ ตอนสร้าง transaction (first purchase / change-plan)
         },
       }),
     ]);
