@@ -29,8 +29,10 @@ export function useRealtimeChatList() {
       });
       const result = await res.json();
       if (!result.success) return;
-      roomsRef.current = result.data;
-      setRooms(result.data);
+      const toMs = (t) => { const s = String(t || ""); return new Date(s.endsWith("Z") ? s : s + "Z").getTime(); };
+      const sorted = result.data.sort((a, b) => toMs(b.lastMessageAt) - toMs(a.lastMessageAt));
+      roomsRef.current = sorted;
+      setRooms(sorted);
       if (result.data.length > 0) {
         myProfileIdRef.current = result.data[0].myProfileId;
       }
@@ -83,7 +85,14 @@ export function useRealtimeChatList() {
                   : (r.unreadCount ?? 0) + 1,
               };
             });
-            updated.sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
+            updated.sort((a, b) => {
+              const toMs = (t) => {
+                if (!t) return 0;
+                const s = String(t);
+                return new Date(s.endsWith("Z") ? s : s + "Z").getTime();
+              };
+              return toMs(b.lastMessageAt) - toMs(a.lastMessageAt);
+            });
             roomsRef.current = updated;
             return updated;
           });

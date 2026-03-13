@@ -14,6 +14,7 @@ import DesktopCardView from "@/components/matching/DesktopCardView";
 import MerryMatchModal from "@/components/matching/MerryMatchModal";
 import NavBar from "@/components/NavBar";
 import { apiClient } from "@/lib/apiClient";
+import { ProfilePopup } from "@/components/profilePopup/ProfilePopup";
 
 // ── Animation Variants ────────────────────────────────────────
 const pageVariants = {
@@ -57,26 +58,17 @@ export default function MatchingPage() {
   const [matchModalOpen, setMatchModalOpen] = useState(false);
   const [matchedProfile, setMatchedProfile] = useState(null);
   const refetchRoomsRef = useRef(null);
-  // เพิ่มบรรทัดนี้ใต้ const router = useRouter();
-  const isMobileChatOpen = searchParams.get("showChat") === "true";
-  // ── helper ดึง token จาก localStorage ────────────────────────
-  // const getToken = () => {
-  //   if (typeof window === "undefined") return null;
-  //   return localStorage.getItem("token");
-  // };
+  const [popupProfileId, setPopupProfileId] = useState(null);
 
   // ── Fetch Profiles ────────────────────────────────────────────
   const fetchProfiles = useCallback(
     async (filters = {}) => {
-      // const token = getToken();
-      // if (!token) return;
-
       setLoading(true);
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        const token = session?.access_token;
+        // const token = session?.access_token;
 
         const params = { ...filters };
         if (Array.isArray(params.genders))
@@ -136,38 +128,49 @@ export default function MatchingPage() {
   }, [myProfileId, fetchMatches]);
 
   // ── Actions ──────────────────────────────────────────────────
-  const handleSwipe = async (direction, profileId) => {
-    // const token = getToken();
-    // if (!token) return;
+  const handleSwipe = useCallback(
+    async (direction, profileId) => {
+      // const token = getToken();
+      // if (!token) return;
 
-    const status = direction === "right" ? "LIKE" : "DISLIKE";
-    const swipedProfile = profiles.find((p) => p.id === profileId);
+      const status = direction === "right" ? "LIKE" : "DISLIKE";
+      const swipedProfile = profiles.find((p) => p.id === profileId);
 
-    setProfiles((prev) => prev.filter((p) => p.id !== profileId));
-    if (status === "LIKE") setRemainingCount((prev) => Math.max(prev - 1, 0));
+      setProfiles((prev) => prev.filter((p) => p.id !== profileId));
+      if (status === "LIKE") setRemainingCount((prev) => Math.max(prev - 1, 0));
 
-    try {
-      const { data } = await apiClient.post("/matching/swipe", {
-        receiverId: profileId,
-        status,
-      });
+      try {
+        const { data } = await apiClient.post("/matching/swipe", {
+          receiverId: profileId,
+          status,
+        });
 
-      if (data.isMatch) {
-        setTimeout(() => {
-          setMatchedProfile(swipedProfile ?? null);
-          setMatchModalOpen(true);
-        }, 800);
-        fetchMatches();
-        refetchRoomsRef.current?.();
+        if (data.isMatch) {
+          setTimeout(() => {
+            setMatchedProfile(swipedProfile ?? null);
+            console.log(swipedProfile);
+
+            setMatchModalOpen(true);
+          }, 800);
+          fetchMatches();
+          refetchRoomsRef.current?.();
+        }
+      } catch (error) {
+        console.error("Swipe error:", error);
       }
-    } catch (error) {
-      console.error("Swipe error:", error);
-    }
-  };
+    },
+    [profiles, myProfileId, fetchMatches],
+  );
 
-  const closeMobileChat = () => {
-    router.push("/matchingpage", { scroll: false });
-  };
+  // เพิ่ม useEffect ใน MatchingPage
+  useEffect(() => {
+    const handler = (e) => {
+      const { direction, profileId } = e.detail;
+      handleSwipe(direction, profileId);
+    };
+    window.addEventListener("matching:swipe", handler);
+    return () => window.removeEventListener("matching:swipe", handler);
+  }, [handleSwipe]);
 
   // ── Render Logic ─────────────────────────────────────────────
   if (authLoading) {
@@ -200,48 +203,15 @@ export default function MatchingPage() {
         matchedProfile={matchedProfile}
       />
 
-      {/* ── MOBILE CHAT OVERLAY ── */}
-      <AnimatePresence>
-        {isMobileChatOpen && (
-          <motion.aside
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-150 bg-white lg:hidden flex flex-col"
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h2 className="text-body2 font-bold text-gray-900">
-                Matches & Chats
-              </h2>
-              <button
-                onClick={closeMobileChat}
-                className="p-2 hover:bg-gray-100 rounded-full"
-              >
-                <img
-                  src="/merry_icon/icon-close.svg"
-                  alt="Close"
-                  className="w-6 h-6"
-                />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-4 py-4">
-              <LeftSidebar
-                currentProfileId={myProfileId}
-                matches={matches}
-                loading={matchesLoading}
-                onRefetchRooms={(fn) => {
-                  refetchRoomsRef.current = fn;
-                }}
-              />
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
+      <ProfilePopup
+        open={!!popupProfileId}
+        onClose={() => setPopupProfileId(null)}
+        id={popupProfileId}
+      />
 
       {/* ── MOBILE MAIN VIEW ── */}
       <motion.div
-        className={`flex flex-col flex-1 overflow-hidden lg:hidden ${isMobileChatOpen ? "hidden" : "flex"}`}
+        className="flex flex-col flex-1 overflow-hidden lg:hidden"
         variants={slideUp}
         initial="hidden"
         animate="visible"
@@ -257,6 +227,13 @@ export default function MatchingPage() {
               profiles={profiles}
               onSwipe={handleSwipe}
               merryDisabled={remainingCount <= 0}
+              onViewProfile={(id) =>
+                window.dispatchEvent(
+                  new CustomEvent("matching:viewProfile", {
+                    detail: { profileId: id },
+                  }),
+                )
+              }
             />
           )}
         </div>
@@ -322,6 +299,13 @@ export default function MatchingPage() {
                   profiles={profiles}
                   onSwipe={handleSwipe}
                   merryDisabled={remainingCount <= 0}
+                  onViewProfile={(id) =>
+                    window.dispatchEvent(
+                      new CustomEvent("matching:viewProfile", {
+                        detail: { profileId: id },
+                      }),
+                    )
+                  }
                 />
               )}
             </div>

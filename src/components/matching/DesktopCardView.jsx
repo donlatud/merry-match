@@ -13,8 +13,7 @@ function EmptyState() {
       </div>
       <h3 className="text-headline4 font-bold text-white">No more profiles</h3>
       <p className="text-body4 text-white/60 leading-relaxed">
-        You've seen everyone for now.<br />
-        Check back later for new matches!
+        You've seen everyone for now.<br />Check back later for new matches!
       </p>
     </div>
   );
@@ -28,8 +27,7 @@ function LimitReachedState() {
       </div>
       <h3 className="text-headline4 font-bold text-white">Merry limit reached!</h3>
       <p className="text-body4 text-white/60 leading-relaxed">
-        You've used all your Merry today.<br />
-        Come back tomorrow for more matches!
+        You've used all your Merry today.<br />Come back tomorrow for more matches!
       </p>
       <div className="mt-2 px-5 py-2 rounded-full bg-red-400/20 border border-red-400/30">
         <span className="text-body5 font-bold text-red-400">Resets every day at midnight 🌙</span>
@@ -39,22 +37,18 @@ function LimitReachedState() {
 }
 
 function getResponsiveConfig(screenWidth) {
-  if (screenWidth >= 1440) {
-    return { cardWidth: 380, cardHeight: 560, translateX: 200, translateZ: 160 };
-  }
+  if (screenWidth >= 1440) return { cardWidth: 380, cardHeight: 560, translateX: 200, translateZ: 160 };
   return { cardWidth: 300, cardHeight: 460, translateX: 160, translateZ: 130 };
 }
 
 function getCardStyle(offset) {
   const absOffset = Math.abs(offset);
   if (absOffset > 2) return { display: "none" };
-
   return {
-    rotateY: offset * -25, // ปรับมุมให้น้อยลงเพื่อให้ดูนุ่มนวล
-    scale: 1 - absOffset * 0.15, // ลดขนาดการ์ดด้านข้าง
-    opacity: 1 - absOffset * 0.4, // จางลง
+    rotateY: offset * -25,
+    scale: 1 - absOffset * 0.15,
+    opacity: 1 - absOffset * 0.4,
     zIndex: 10 - absOffset,
-    // เพิ่ม Filter เพื่อให้การ์ดด้านข้างดูละมุนขึ้น
     filter: absOffset > 0 ? "brightness(0.6) blur(2px)" : "none",
   };
 }
@@ -65,7 +59,8 @@ const ArrowIcon = ({ direction }) => (
   </svg>
 );
 
-export default function DesktopCardView({ profiles, onSwipe, merryDisabled }) {
+// ✅ รับ onViewProfile prop
+export default function DesktopCardView({ profiles, onSwipe, merryDisabled, onViewProfile }) {
   const [centerIndex, setCenterIndex] = useState(0);
   const [config, setConfig] = useState(getResponsiveConfig(1440));
 
@@ -100,32 +95,15 @@ export default function DesktopCardView({ profiles, onSwipe, merryDisabled }) {
 
   return (
     <div className="relative w-full" style={{ height: `${containerHeight}px` }}>
-
-      {/* Arrow ซ้าย — อยู่นอก overflow-hidden */}
-      <button
-        onClick={handlePrev}
-        className="absolute left-2 top-[45%] -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/40 transition-colors z-50"
-      >
+      <button onClick={handlePrev} className="absolute left-2 top-[45%] -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/40 transition-colors z-50">
         <ArrowIcon direction="left" />
       </button>
-
-      {/* Arrow ขวา — อยู่นอก overflow-hidden */}
-      <button
-        onClick={handleNext}
-        className="absolute right-2 top-[45%] -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/40 transition-colors z-50"
-      >
+      <button onClick={handleNext} className="absolute right-2 top-[45%] -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/40 transition-colors z-50">
         <ArrowIcon direction="right" />
       </button>
 
-      {/* Card area — overflow-hidden ตัดเฉพาะ card ที่ล้น */}
-      <div
-        className="absolute overflow-hidden"
-        style={{ top: 0, bottom: 0, left: "48px", right: "48px" }}
-      >
-        <div
-          className="relative w-full h-full flex items-center justify-center"
-          style={{ perspective: "1000px", perspectiveOrigin: "center center" }}
-        >
+      <div className="absolute overflow-hidden" style={{ top: 0, bottom: 0, left: "48px", right: "48px" }}>
+        <div className="relative w-full h-full flex items-center justify-center" style={{ perspective: "1000px", perspectiveOrigin: "center center" }}>
           {profiles.map((profile, index) => {
             let offset = index - centerIndex;
             const half = Math.floor(profiles.length / 2);
@@ -143,48 +121,23 @@ export default function DesktopCardView({ profiles, onSwipe, merryDisabled }) {
               <motion.div
                 key={profile.id}
                 className="absolute"
-                style={{
-                  width: `${config.cardWidth}px`,
-                  height: `${config.cardHeight}px`,
-                  transformStyle: "preserve-3d",
-                  cursor: isCenter ? "default" : "pointer",
-                }}
-                animate={{
-                  x: translateX,
-                  z: translateZ,
-                  rotateY: style.rotateY,
-                  scale: style.scale,
-                  opacity: style.opacity,
-                  zIndex: style.zIndex,
-                  filter: style.filter,
-                }}
+                style={{ width: `${config.cardWidth}px`, height: `${config.cardHeight}px`, transformStyle: "preserve-3d", cursor: isCenter ? "default" : "pointer" }}
+                animate={{ x: translateX, z: translateZ, rotateY: style.rotateY, scale: style.scale, opacity: style.opacity, zIndex: style.zIndex, filter: style.filter }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 onClick={() => !isCenter && setCenterIndex(index)}
               >
-                {/* Card */}
                 <div className="w-full h-full rounded-3xl overflow-hidden">
-                  <ProfileCard profile={profile} />
+                  {/* ✅ ส่ง onViewProfile เฉพาะ center card */}
+                  <ProfileCard
+                    profile={profile}
+                    onViewProfile={isCenter ? onViewProfile : undefined}
+                  />
                 </div>
 
-                {/* Action buttons — เฉพาะ center card */}
                 {isCenter && (
-                  <div
-                    className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-4 translate-y-1/2"
-                    style={{ zIndex: 999 }}
-                  >
-                    <span key={`pass-${profile.id}`}>
-                      <ButtonPass
-                        onClick={handlePass}
-                        className="w-20 h-20 [&_img]:w-10 [&_img]:h-10 transition-all duration-300"
-                      />
-                    </span>
-                    <span key={`merry-${profile.id}`}>
-                      <ButtonMerry
-                        onClick={handleMerry}
-                        disabled={merryDisabled}
-                        className="w-20 h-20 [&_img]:w-10 [&_img]:h-10 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300"
-                      />
-                    </span>
+                  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-4 translate-y-1/2" style={{ zIndex: 999 }}>
+                    <ButtonPass onClick={handlePass} className="w-20 h-20 [&_img]:w-10 [&_img]:h-10 transition-all duration-300" />
+                    <ButtonMerry onClick={handleMerry} disabled={merryDisabled} className="w-20 h-20 [&_img]:w-10 [&_img]:h-10 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300" />
                   </div>
                 )}
               </motion.div>
@@ -192,7 +145,6 @@ export default function DesktopCardView({ profiles, onSwipe, merryDisabled }) {
           })}
         </div>
       </div>
-
     </div>
   );
 }

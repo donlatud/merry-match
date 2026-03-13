@@ -20,9 +20,9 @@ const formatTime = (createdAt) => {
 };
 
 function ReadReceipt({ isPending, isRead }) {
-  if (isPending) return <span className="text-[10px] text-gray-300 ml-1">○</span>;
-  if (isRead) return <span className="text-[10px] text-red-400 ml-1 font-bold">✓✓</span>;
-  return <span className="text-[10px] text-gray-400 ml-1">✓</span>;
+  if (isPending) return <span className="text-[10px] text-gray-300 ml-1">Sending...</span>;
+  if (isRead) return <span className="text-[10px] text-red-400 ml-1 font-medium">Read</span>;
+  return <span className="text-[10px] text-gray-400 ml-1">Sent</span>;
 }
 
 function TypingIndicator({ partnerImage }) {
@@ -239,6 +239,27 @@ function ChatPanel({ roomId, partner, myProfileId, router }) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-4">
+        {/* ✅ Match announcement banner — แสดงตลอดเวลาด้านบนสุด */}
+        {partner && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mx-auto w-full max-w-md shrink-0"
+          >
+            <div className="shrink-0 w-9 h-9 rounded-full bg-red-100 flex items-center justify-center">
+              <img src="/merry_icon/icon-match.svg" alt="" className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[13px] font-bold text-red-500 leading-snug">
+                Now you and {partner.name} are Merry Match!
+              </p>
+              <p className="text-[11px] text-red-400 mt-0.5 leading-snug">
+                You can message something nice and make a good conversation. Happy Merry!
+              </p>
+            </div>
+          </motion.div>
+        )}
         {loading ? (
           <div className="flex justify-center py-10">
             <div className="w-8 h-8 rounded-full border-4 border-red-400 border-t-transparent animate-spin" />
