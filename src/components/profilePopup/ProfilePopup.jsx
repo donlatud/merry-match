@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import { ButtonMerry, ButtonPass } from "../commons/button/IconButton";
 import { PaginationWrapper } from "../ui/PaginationWrapper";
@@ -165,10 +166,13 @@ export function ProfilePopup({
   // ---------- Early return: ยังไม่เปิด popup ไม่ render อะไร ----------
   if (!open) return null;
 
+  // ---------- Portal target: render ที่ body เสมอ เพื่อหลุดจาก stacking context ของ NavBar ----------
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
+
   // ---------- Early return: ยังไม่มี user (กำลังโหลด / error) แสดงกล่องข้อความกลางจอ ----------
   if (!user) {
-    return (
-      <div className="fixed inset-0 lg:z-60 flex items-center justify-center bg-foreground/20">
+    const content = (
+      <div className="fixed inset-0 z-60 flex items-center justify-center bg-foreground/20">
         {error ? (
           <div className="rounded-3xl bg-white px-6 py-6 shadow-lg max-w-sm w-full mx-4 flex flex-col items-center justify-center">
             <span className="text-body2 text-red-600">{error}</span>
@@ -186,28 +190,32 @@ export function ProfilePopup({
         )}
       </div>
     );
+    return portalTarget ? createPortal(content, portalTarget) : content;
   }
 
   // ---------- Render หลัก: Modal การ์ดโปรไฟล์ ----------
-  return (
-    <div className="fixed inset-0 z-60">
-      {/* Overlay: เต็มจอ, backdrop มัว, scroll ได้, จัดกลาง (มือถือ pt-[50px] เพื่อไม่ทับ header) */}
+  const modal = (
+    <div className="fixed inset-0 z-60 lg:z-90">
+      {/* Overlay: popup z-60, NavBar z-70 → NavBar + dropdown อยู่หน้าเสมอ */}
       <div
-        className="fixed inset-0 z-60 flex items-center justify-center overflow-y-auto bg-foreground/20 pt-[50px] lg:pt-0"
+        className="fixed inset-x-0 bottom-0 top-13 lg:top-0 z-60 flex items-center justify-center overflow-y-auto bg-foreground/20"
         aria-modal="true"
         role="dialog"
         aria-labelledby="profile-heading"
       >
-        {/* ปุ่มโปร่งเต็มจอ: กดพื้นหลังปิด modal (ต้องกดบน overlay ไม่ใช่บนการ์ด) */}
+        {/* ปุ่มโปร่ง: desktop กดพื้นหลังปิดได้, mobile ไม่ปิด */}
         <button
           type="button"
           className="absolute inset-0 -z-10"
           aria-label="ปิด"
-          onClick={onClose}
+          onClick={() => {
+            if (!isLg) return;
+            onClose?.();
+          }}
         />
 
         {/* การ์ดหลัก: มือถือเต็มกว้าง+scroll, desktop 1140px กว้าง มี padding lg:p-16 */}
-        <article className="relative lg:flex w-full h-full lg:gap-1 lg:rounded-[32px] bg-white lg:w-[1140px] lg:h-fit lg:p-16 overflow-y-auto  shadow-lg">
+        <article className="relative lg:flex w-full h-full lg:gap-1 lg:rounded-[32px] bg-white lg:w-[1140px] lg:h-fit lg:p-16 overflow-y-auto shadow-lg">
           {/* ปุ่มปิด (แสดงเฉพาะ lg): มุมขวาบน */}
           <button
             type="button"
@@ -402,4 +410,5 @@ export function ProfilePopup({
       </div>
     </div>
   );
+  return portalTarget ? createPortal(modal, portalTarget) : modal;
 }
