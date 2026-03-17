@@ -27,8 +27,30 @@ export const swipeRepository = {
     });
   },
 
+  async deleteOneLike(requesterId, receiverId, tx = prisma) {
+    return await tx.swipe.deleteMany({
+      where: {
+        requester_id: requesterId,
+        receiver_id: receiverId,
+        status: "LIKE",
+      },
+    });
+  },
+
+  async deleteLikePair(profileIdA, profileIdB, tx = prisma) {
+    return await tx.swipe.deleteMany({
+      where: {
+        status: "LIKE",
+        OR: [
+          { requester_id: profileIdA, receiver_id: profileIdB },
+          { requester_id: profileIdB, receiver_id: profileIdA },
+        ],
+      },
+    });
+  },
+
   /**
-   * ดึงรายการ Profile ID ที่ User เคย Swipe ไปแล้ว (ทั้ง LIKE และ PASS)
+   * ดึงรายการ Profile ID ที่ User เคย Swipe ไปแล้ว (ทั้ง LIKE และ DISLIKE)
    */
   async getSwipedProfileIds(profileId) {
     const swipedRecords = await prisma.swipe.findMany({

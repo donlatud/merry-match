@@ -45,6 +45,7 @@ export default function MerryToYouPage() {
   const [selectedProfileId, setSelectedProfileId] = useState(null);
   const [matchModalOpen, setMatchModalOpen] = useState(false);
   const [matchedProfile, setMatchedProfile] = useState(null);
+  const [openingChatProfileId, setOpeningChatProfileId] = useState(null);
 
   const planMode = router.query.mode;
   const isFreeMode = planMode === "free";
@@ -142,6 +143,41 @@ export default function MerryToYouPage() {
     }
   };
 
+  const handleGoToChat = async (partnerProfileId) => {
+    if (!partnerProfileId) return;
+    setOpeningChatProfileId(partnerProfileId);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+
+      const res = await fetch("/api/chat/rooms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ partnerId: partnerProfileId }),
+      });
+      const result = await res.json();
+      if (result.success && result.data?.id) {
+        router.push(`/chat/${result.data.id}`);
+      }
+    } catch (err) {
+      console.error("Failed to open chat room from merry-to-you:", err);
+    } finally {
+      setOpeningChatProfileId(null);
+    }
+  };
+
+  const handleMerryFromPopup = async () => {
+    if (!selectedProfileId) return;
+    await handleMerryFromList(selectedProfileId);
+    setSelectedProfileId(null);
+  };
+
   const isBlurred = isFreeMode && showUpsellModal;
 
   return (
@@ -158,7 +194,7 @@ export default function MerryToYouPage() {
         <div className="flex justify-center">
           <div className="flex justify-center flex-col lg:w-[933px]">
             <div className="py-10 px-4 gap-8 flex flex-col">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-col gap-2">
                   <span className="text-body2 text-beige-700 lg:text-beige-600 font-semibold">
                     MERRY TO YOU
@@ -169,12 +205,23 @@ export default function MerryToYouPage() {
                   <p className="text-body2 text-gray-700 max-w-xl">
                     See who has already merry’d you and decide who you want to match with.
                   </p>
+
+                  {/* Mobile-friendly back button: อยู่ใต้คำอธิบาย ชิดซ้าย เต็มความกว้างพอให้กดง่าย */}
+                  <button
+                    type="button"
+                    onClick={() => router.push("/merry-list")}
+                    className="mt-3 inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 rounded-full border border-gray-300 text-body3 text-gray-700 hover:bg-gray-50 cursor-pointer lg:hidden"
+                  >
+                    <span className="text-lg leading-none">←</span>
+                    <span>Back to Merry list</span>
+                  </button>
                 </div>
 
+                {/* Desktop: ปุ่มกลับอยู่มุมขวาแบบเดิม */}
                 <button
                   type="button"
                   onClick={() => router.push("/merry-list")}
-                  className="inline-flex items-center gap-2 self-start lg:self-auto px-4 py-2 rounded-full border border-gray-300 text-body3 text-gray-700 hover:bg-gray-50 cursor-pointer"
+                  className="hidden lg:inline-flex items-center gap-2 self-auto px-4 py-2 rounded-full border border-gray-300 text-body3 text-gray-700 hover:bg-gray-50 cursor-pointer"
                 >
                   <span className="text-lg leading-none">←</span>
                   <span>Back to Merry list</span>
@@ -233,7 +280,7 @@ export default function MerryToYouPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => router.push("/matching-page")}
+                  onClick={() => router.push("/matchingpage")}
                   className="cursor-pointer px-6 py-3 rounded-full bg-red-500 text-white font-semibold text-body2 hover:bg-red-600 transition-colors"
                 >
                   Go to Matching
@@ -245,21 +292,28 @@ export default function MerryToYouPage() {
               !error &&
               profiles.length > 0 &&
               profiles.map((profile) => (
-                <div className="px-4">
+                <div className="px-4" key={profile.id}>
                   <MerryProfileCard
-                  key={profile.id}
-                  profile={profile}
-                  onViewProfile={() => setSelectedProfileId(profile.id)}
-                >
-                  <div className="flex gap-3">
-                    <ButtonGoToChat iconClassName="brightness-0 saturate-0 opacity-60" />
-                    <ButtonSeeProfile
-                      iconClassName="brightness-0 saturate-0 opacity-60"
-                      onClick={() => setSelectedProfileId(profile.id)}
-                    />
-                    <ButtonMerry onClick={() => handleMerryFromList(profile.id)} />
-                  </div>
-                </MerryProfileCard>
+                    profile={profile}
+                    onViewProfile={() => setSelectedProfileId(profile.id)}
+                  >
+                    <div className="flex gap-3">
+                      {profile.status === 1 && (
+                        <ButtonGoToChat
+                          iconClassName={`brightness-0 saturate-0 ${
+                            openingChatProfileId === profile.id ? "opacity-30" : "opacity-60"
+                          }`}
+                          disabled={openingChatProfileId !== null}
+                          onClick={() => handleGoToChat(profile.id)}
+                        />
+                      )}
+                      <ButtonSeeProfile
+                        iconClassName="brightness-0 saturate-0 opacity-60"
+                        onClick={() => setSelectedProfileId(profile.id)}
+                      />
+                      <ButtonMerry onClick={() => handleMerryFromList(profile.id)} />
+                    </div>
+                  </MerryProfileCard>
                 </div>
               ))}
           </div>
@@ -351,6 +405,12 @@ export default function MerryToYouPage() {
         onClose={() => setSelectedProfileId(null)}
         id={selectedProfileId}
         leftButton={<></>}
+        rightButton={
+          <ButtonMerry
+            onClick={handleMerryFromPopup}
+            className="w-15 h-15 [&_img]:w-12 [&_img]:h-10 shadow-button"
+          />
+        }
       />
 
       <Footer />

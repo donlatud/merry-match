@@ -5,7 +5,7 @@ import { swipeService } from "@/services/matching/swipe.service";
 export const swipeController = {
   /**
    * POST /api/matching/swipe
-   * สร้าง Swipe ใหม่ (LIKE / PASS)
+   * สร้าง Swipe ใหม่ (LIKE / DISLIKE)
    */
   async createSwipe(req, res) {
     try {
@@ -22,15 +22,19 @@ export const swipeController = {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      if (!["LIKE", "DISLIKE"].includes(status)) {
-        return res.status(400).json({ error: "Invalid status. Must be LIKE or DISLIKE" });
+      if (!["LIKE", "DISLIKE", "PASS"].includes(status)) {
+        return res
+          .status(400)
+          .json({ error: "Invalid status. Must be LIKE or DISLIKE" });
       }
+
+      const normalizedStatus = status === "PASS" ? "DISLIKE" : status;
 
       // เรียก Service Layer
       const result = await swipeService.createSwipe({
         userId: user.id,
         receiverId,
-        status,
+        status: normalizedStatus,
       });
 
       // ส่ง Response สำเร็จ
@@ -42,6 +46,35 @@ export const swipeController = {
 
     } catch (error) {
       // จัดการ Error
+      return this.handleError(res, error);
+    }
+  },
+
+  /**
+   * DELETE /api/matching/swipe
+   * ยกเลิกการ LIKE ที่เคยกดไว้
+   */
+  async unlikeSwipe(req, res) {
+    try {
+      authMiddleware.validateMethod(req, ["DELETE"]);
+
+      const user = await authMiddleware.authenticate(req);
+      const receiverId = req.body?.receiverId ?? req.query?.receiverId;
+
+      if (!receiverId) {
+        return res.status(400).json({ error: "receiverId is required" });
+      }
+
+      const result = await swipeService.unlikeSwipe({
+        userId: user.id,
+        receiverId,
+      });
+
+      return res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
       return this.handleError(res, error);
     }
   },
@@ -62,6 +95,10 @@ export const swipeController = {
     }
 
     if (error.message.includes("not found")) {
+      return res.status(404).json({ error: error.message });
+    }
+
+    if (error.message.includes("Like not found")) {
       return res.status(404).json({ error: error.message });
     }
 

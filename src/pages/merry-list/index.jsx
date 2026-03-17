@@ -1,13 +1,12 @@
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/router";
 import { AuthContext } from "@/contexts/login/AuthContext";
 import { supabase } from "@/providers/supabase.provider";
 import { ButtonSeeProfile } from "@/components/commons/button/IconButton";
 import { ButtonGoToChat } from "@/components/commons/button/IconButton";
-import { ButtonMerry } from "@/components/commons/button/IconButton";
 import { MerryProfileCard } from "@/components/merrylist/MerryProfileCard.jsx";
 import { ProfilePopup } from "@/components/profilePopup/ProfilePopup.jsx";
 import { Loading } from "@/components/commons/Loading/Loading";
@@ -43,6 +42,34 @@ function getResetInText() {
   return `Reset in ${m}m`;
 }
 
+const PENDING_UNLIKES_STORAGE_KEY = "merrylist_pending_unlikes";
+
+function readPendingUnlikesFromStorage() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(PENDING_UNLIKES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed;
+  } catch {
+    return [];
+  }
+}
+
+function writePendingUnlikesToStorage(ids) {
+  if (typeof window === "undefined") return;
+  try {
+    if (!ids || ids.length === 0) {
+      window.localStorage.removeItem(PENDING_UNLIKES_STORAGE_KEY);
+    } else {
+      window.localStorage.setItem(PENDING_UNLIKES_STORAGE_KEY, JSON.stringify(ids));
+    }
+  } catch {
+    // ignore storage errors
+  }
+}
+
 export default function MerryListPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useContext(AuthContext);
@@ -58,9 +85,10 @@ export default function MerryListPage() {
   const [subscriptionPackageName, setSubscriptionPackageName] = useState(null);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState(null);
-  const [unmerryModalOpen, setUnmerryModalOpen] = useState(false);
-  const [pendingUnmerryId, setPendingUnmerryId] = useState(null);
-  const [unmerriedIds, setUnmerriedIds] = useState([]);
+  const [tempUnlikedIds, setTempUnlikedIds] = useState([]);
+  const [openingChatProfileId, setOpeningChatProfileId] = useState(null);
+  const hasFetchedMerryListRef = useRef(false);
+  const isFetchingMerryListRef = useRef(false);
 
   // ใช้ข้อมูล package จริงจากระบบ เพื่อให้ Premium card ตรงกับหน้า membership
   const {
@@ -78,6 +106,14 @@ export default function MerryListPage() {
     return () => clearInterval(t);
   }, []);
 
+  // sync initial pending unlikes from localStorage → state เมื่อเข้าเพจ
+  useEffect(() => {
+    const initial = readPendingUnlikesFromStorage();
+    if (initial.length) {
+      setTempUnlikedIds(initial);
+    }
+  }, []);
+
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
@@ -90,13 +126,42 @@ export default function MerryListPage() {
       if (!authLoading) setLoading(false);
       return;
     }
+    if (hasFetchedMerryListRef.current || isFetchingMerryListRef.current) return;
 
     const fetchMerryList = async () => {
       try {
+        isFetchingMerryListRef.current = true;
         setLoading(true);
         setError(null);
-        const { data: { session } } = await supabase.auth.getSession();
+
+        // [1] apply pending unlikes จาก localStorage ก่อนดึง Merry List
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         const token = session?.access_token ?? null;
+        const headers = getAuthHeaders(token);
+
+        const pendingIds = readPendingUnlikesFromStorage();
+        if (pendingIds.length > 0) {
+          try {
+            await Promise.all(
+              pendingIds.map((profileId) =>
+                axios.delete("/api/matching/swipe", {
+                  headers,
+                  params: { receiverId: profileId },
+                })
+              )
+            );
+          } catch (err) {
+            // ถ้า error บางตัว ก็ยังไปต่อได้และล้าง storage เพื่อไม่ให้ยิงซ้ำเรื่อย ๆ
+            console.error("Failed to apply pending unlikes:", err);
+          } finally {
+            writePendingUnlikesToStorage([]);
+            setTempUnlikedIds([]);
+          }
+        }
+
+        // [2] ดึง Merry List หลังจาก apply unlikes แล้ว
         const res = await axios.get("/api/merrylist", {
           headers: getAuthHeaders(token),
         });
@@ -105,13 +170,16 @@ export default function MerryListPage() {
         setMerryMatch(res.data?.merryMatch ?? 0);
         setMerryLimit(res.data?.merryLimit ?? { used: 0, total: 20, resetAt: "00:00" });
         setSubscriptionPackageName(res.data?.subscriptionPackageName ?? null);
+        hasFetchedMerryListRef.current = true;
       } catch (err) {
         if (err.response?.status === 401) {
           router.replace("/login");
           return;
         }
+        hasFetchedMerryListRef.current = false;
         setError(err.response?.data?.error || err.message || "โหลด Merry List ไม่สำเร็จ");
       } finally {
+        isFetchingMerryListRef.current = false;
         setLoading(false);
       }
     };
@@ -140,6 +208,46 @@ export default function MerryListPage() {
     router.push("/merry-to-you?mode=sub");
   };
 
+  const handleToggleUnlike = (profileId) => {
+    if (!profileId) return;
+
+    setTempUnlikedIds((prev) => {
+      const next = prev.includes(profileId)
+        ? prev.filter((id) => id !== profileId)
+        : [...prev, profileId];
+      writePendingUnlikesToStorage(next);
+      return next;
+    });
+  };
+
+  const handleGoToChat = async (partnerProfileId) => {
+    if (!partnerProfileId) return;
+    setOpeningChatProfileId(partnerProfileId);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+
+      const res = await fetch("/api/chat/rooms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ partnerId: partnerProfileId }),
+      });
+      const result = await res.json();
+      if (result.success && result.data?.id) {
+        router.push(`/chat/${result.data.id}`);
+      }
+    } catch (err) {
+      console.error("Failed to open chat room from merry list:", err);
+    } finally {
+      setOpeningChatProfileId(null);
+    }
+  };
   return (
     <div>
       <NavBar />
@@ -161,8 +269,8 @@ export default function MerryListPage() {
                   className="group relative flex w-full rounded-3xl border bg-white px-6 py-4 transition transform cursor-pointer hover:-translate-y-0.5 hover:border-red-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-200 focus:ring-offset-2 lg:w-[200px]"
                   aria-label="View people who merry you"
                 >
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-1 lg:pb-2">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-start gap-1 lg:pb-2">
                       <p className="text-headline4 text-red-500 font-bold group-hover:text-red-600">
                         {formatNumber(merryToYou)}
                       </p>
@@ -172,8 +280,11 @@ export default function MerryListPage() {
                         className="w-6 h-6"
                       />
                     </div>
-                    <p className="text-body2 text-gray-700 font-medium -mt-2 group-hover:text-red-500 group-hover:underline">
+                    <p className="text-body2 text-start text-gray-700  font-medium  lg:-mt-2 group-hover:text-red-500 group-hover:underline">
                       Merry to you
+                    </p>
+                    <p className="text-body5 text-start text-gray-500 -mt-1 group-hover:text-red-500">
+                      Tap to see who merry you
                     </p>
                   </div>
                 </button>
@@ -190,8 +301,11 @@ export default function MerryListPage() {
                         className="w-12 h-6"
                       />
                     </div>
-                    <p className="text-body2 text-gray-700 font-medium">
+                    <p className="text-body2 text-gray-700 font-medium ">
                       Merry match
+                    </p>
+                    <p className="text-body5 text-gray-400 -mt-1">
+                      You&apos;re on this list now
                     </p>
                   </div>
                 </div>
@@ -293,7 +407,7 @@ export default function MerryListPage() {
               </p>
               <button
                 type="button"
-                onClick={() => router.push("/matching-page")}
+                onClick={() => router.push("/matchingpage")}
                 className="cursor-pointer px-6 py-3 rounded-full bg-red-500 text-white font-semibold text-body2 hover:bg-red-600 transition-colors"
               >
                 Go to Matching
@@ -306,7 +420,8 @@ export default function MerryListPage() {
             profiles.length > 0 &&
             filteredProfiles.length > 0 &&
             filteredProfiles.map((profile) => {
-              const isUnmerried = unmerriedIds.includes(profile.id);
+              const isTempUnliked = tempUnlikedIds.includes(profile.id);
+
               return (
                 <MerryProfileCard
                   key={profile.id}
@@ -314,30 +429,38 @@ export default function MerryListPage() {
                   onViewProfile={() => setSelectedProfileId(profile.id)}
                 >
                   <div className="flex gap-3">
-                    <ButtonGoToChat iconClassName="brightness-0 saturate-0 opacity-60" />
+                    {profile.status === 1 && (
+                      <ButtonGoToChat
+                        iconClassName={`brightness-0 saturate-0 ${
+                          openingChatProfileId === profile.id ? "opacity-30" : "opacity-60"
+                        }`}
+                        disabled={openingChatProfileId !== null}
+                        onClick={() => handleGoToChat(profile.id)}
+                      />
+                    )}
                     <ButtonSeeProfile
                       iconClassName="brightness-0 saturate-0 opacity-60"
                       onClick={() => setSelectedProfileId(profile.id)}
                     />
-                    {isUnmerried ? (
-                      <ButtonMerry />
-                    ) : (
-                      <button
-                        type="button"
-                        aria-label="Already merry"
-                        className="size-12 rounded-2xl bg-red-500 shadow-(--shadow-button) p-0 inline-flex items-center justify-center cursor-pointer"
-                        onClick={() => {
-                          setPendingUnmerryId(profile.id);
-                          setUnmerryModalOpen(true);
-                        }}
-                      >
-                        <img
-                          src="/merry_icon/icon-match-log.svg"
-                          alt=""
-                          className="size-6 shrink-0 object-contain brightness-0 invert"
-                        />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      aria-label="Already merry"
+                      aria-pressed={!isTempUnliked}
+                      className={`size-12 rounded-2xl shadow-(--shadow-button) p-0 inline-flex items-center justify-center cursor-pointer transition-all duration-500 ${
+                        isTempUnliked
+                          ? "bg-white hover:bg-white"
+                          : "bg-red-500 hover:bg-red-500"
+                      }`}
+                      onClick={() => handleToggleUnlike(profile.id)}
+                    >
+                      <img
+                        src="/merry_icon/icon-match-log.svg"
+                        alt=""
+                        className={`size-6 shrink-0 object-contain transition-all duration-500 ${
+                          isTempUnliked ? "" : "brightness-0 invert"
+                        }`}
+                      />
+                    </button>
                   </div>
                 </MerryProfileCard>
               );
@@ -356,12 +479,12 @@ export default function MerryListPage() {
           onClick={() => setShowPlanModal(false)}
         >
           <div
-            className="w-full max-w-[760px] rounded-[32px] bg-white p-6 shadow-2xl lg:p-8"
+            className="w-fit rounded-[32px] bg-white p-6 shadow-2xl lg:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-6">
               <div className="flex flex-col gap-2">
-                <h2 className="text-headline4 font-bold text-gray-900">
+                <h2 className="text-headline4 font-bold text-purple-500">
                   See everyone who merry you
                 </h2>
                 <p className="text-body3 text-gray-600 max-w-[373px] leading-relaxed">
@@ -388,7 +511,7 @@ export default function MerryListPage() {
                   className="px-4 py-2 rounded-full text-body3 font-semibold text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
                   onClick={() => {
                     setShowPlanModal(false);
-                    router.push("/membership");
+                    router.push("/payment");
                   }}
                 >
                   View more packages
@@ -415,8 +538,6 @@ export default function MerryListPage() {
         leftButton={<></>}
         rightButton={<></>}
       />
-
-      {/* TODO: unmerry modal will be reintroduced with real API in future */}
     </div>
   );
 }
