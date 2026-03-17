@@ -21,12 +21,13 @@ export default function MerryPackageSection() {
     <>
       <NavBar />
 
-      <main>
+      <main >
+        
         <section
           aria-labelledby="merry-membership-heading"
-          className="bg-utility-bg-main w-full py-10 lg:pt-[80px] lg:pb-[160px]"
+          className="flex justify-center bg-utility-bg-main w-full  py-10 lg:pt-[80px] lg:pb-[160px]"
         >
-          <div className="flex w-full flex-col gap-[43px] px-4 lg:gap-[80px]">
+          <div className="flex max-w-[1440px] w-full flex-col gap-[43px] px-4 lg:gap-[80px]">
             {/* Hero / Heading */}
             <header className="w-full">
               {/* Mobile heading */}

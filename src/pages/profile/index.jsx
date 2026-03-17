@@ -9,16 +9,30 @@ import DropdownBar from "@/components/commons/input/DropDownBar";
 import MultiSelect from "@/components/commons/input/MultiSelect";
 import { PrimaryButton } from "@/components/commons/button/PrimaryButton";
 import { SecondaryButton } from "@/components/commons/button/SecondaryButton";
-import { PhotoUploadCard } from "@/components/register/PhotoUploadCard";
+import { PhotoUploadCard, SortablePhotoUploadCard } from "@/components/register/PhotoUploadCard";
 import Footer from "@/components/Footer";
 import { ProfilePopup } from "@/components/profilePopup/ProfilePopup";
 import { merryToast } from "@/components/commons/toast/MerryToast";
 import { CheckCircleIcon } from "@heroicons/react/24/solid";
 import { PROFILE_IMAGES_BUCKET } from "@/lib/storageHelpers";
 import { Loading } from "@/components/commons/Loading/Loading";
+import Modal from "@/components/commons/modal/modal";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { SortableContext, rectSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 
 const PROFILE_PHOTO_SLOTS = 5;
-const DEFAULT_PROFILE_ID = "2d552fcd-a0be-47fb-b325-9b2b3fc435b8";
+
+function getAuthHeaders(token) {
+  if (!token) return {};
+  return { Authorization: `Bearer ${token}` };
+}
 
 const LOCATION_OPTIONS = ["Bangkok, Thailand", "Chiang Mai, Thailand", "Phuket, Thailand", "Other"];
 const CITY_OPTIONS = ["Bangkok", "Chiang Mai", "Phuket", "Krabi", "Pattaya", "Other"];
@@ -30,7 +44,7 @@ const HOBBIES_OPTIONS = ["E-sport", "Travel", "Movies", "Fitness", "Photography"
 
 export default function ProfilePage() {
   const router = useRouter();
-  const profileId = router.query.id ?? DEFAULT_PROFILE_ID;
+  const [profileId, setProfileId] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -51,16 +65,92 @@ export default function ProfilePage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUser, setPreviewUser] = useState(null);
   const [previewImageUrls, setPreviewImageUrls] = useState([]);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteEmailInput, setDeleteEmailInput] = useState("");
+  const [deleteEmailError, setDeleteEmailError] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [dropJustEnded, setDropJustEnded] = useState(false);
   const fileInputRef = useRef(null);
   const pendingPhotoSlotRef = useRef(null);
 
-  useEffect(() => {
-    if (!profileId) return;
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 8 },
+    }),
+  );
 
+  const getPhotoDragBaseId = (photo, index) => {
+    if (typeof photo === "string") return `url:${photo}`;
+    if (photo instanceof File) {
+      return `file:${photo.name}:${photo.size}:${photo.lastModified}`;
+    }
+    return `photo:${index}`;
+  };
+
+  const buildPhotoDragEntries = (photoList) => {
+    const counter = new Map();
+    return photoList
+      .map((value, index) => ({ value, index }))
+      .filter((item) => item.value != null)
+      .map((item) => {
+        const baseId = getPhotoDragBaseId(item.value, item.index);
+        const count = counter.get(baseId) ?? 0;
+        counter.set(baseId, count + 1);
+        return {
+          ...item,
+          dragId: `${baseId}#${count}`,
+        };
+      });
+  };
+
+  const handlePhotosDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setDropJustEnded(true);
+    setPhotos((prev) => {
+      const entries = buildPhotoDragEntries(prev);
+      const oldIndex = entries.find((entry) => entry.dragId === String(active.id))?.index ?? -1;
+      const newIndex = entries.find((entry) => entry.dragId === String(over.id))?.index ?? -1;
+
+      if (oldIndex < 0 || newIndex < 0) {
+        return prev;
+      }
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+    setTimeout(() => setDropJustEnded(false), 120);
+  };
+
+  useEffect(() => {
     setProfileError(null);
     const fetchProfile = async () => {
       try {
-        const res = await axios.get(`/api/profile/${profileId}`);
+        setLoading(true);
+
+        // ดึง user ปัจจุบันจาก auth → profile id
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const token = session?.access_token ?? null;
+
+        const meRes = await axios.get("/api/me", {
+          headers: getAuthHeaders(token),
+        });
+        const meProfileId = meRes.data?.profile?.id ?? null;
+
+        if (!meProfileId) {
+          setProfileError("Profile not found.");
+          setLoading(false);
+          return;
+        }
+
+        setProfileId(meProfileId);
+
+        // ใช้ profile id ที่ได้ไปดึงข้อมูลโปรไฟล์แบบเดิม
+        const res = await axios.get(`/api/profile/${meProfileId}`);
         const data = res.data;
 
         setName(data.name ?? "");
@@ -76,13 +166,20 @@ export default function ProfilePage() {
         setAbout(data.about ?? "");
         setInterests(data.interests ?? []);
         const urls = (data.images ?? []).slice(0, PROFILE_PHOTO_SLOTS);
-        const padded = [...urls, ...Array(PROFILE_PHOTO_SLOTS).fill(null)].slice(0, PROFILE_PHOTO_SLOTS);
+        const padded = [...urls, ...Array(PROFILE_PHOTO_SLOTS).fill(null)].slice(
+          0,
+          PROFILE_PHOTO_SLOTS,
+        );
         setPhotos(padded);
       } catch (err) {
         if (err.response?.status === 404) {
-          setProfileError("ไม่พบโปรไฟล์นี้");
+          setProfileError("Profile not found.");
         } else {
-          setProfileError(err.response?.data?.error || err.message || "โหลดโปรไฟล์ไม่สำเร็จ");
+          setProfileError(
+            err.response?.data?.error ||
+              err.message ||
+              "Failed to load your profile. Please try again.",
+          );
         }
       } finally {
         setLoading(false);
@@ -90,7 +187,7 @@ export default function ProfilePage() {
     };
 
     fetchProfile();
-  }, [profileId]);
+  }, []);
 
   const handlePhotoUploadClick = (slotIndex) => {
     pendingPhotoSlotRef.current = slotIndex;
@@ -155,11 +252,14 @@ export default function ProfilePage() {
       });
       merryToast.success(
         "Profile updated",
-        "อัปเดตโปรไฟล์สำเร็จ!",
+        "Your profile has been updated successfully.",
         <CheckCircleIcon className="size-10! text-green-500" />,
       );
     } catch (err) {
-      const msg = err.response?.data?.error || err.message || "อัปเดตไม่สำเร็จ";
+      const msg =
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to update profile. Please try again.";
       setProfileError(msg);
     } finally {
       setUpdating(false);
@@ -168,10 +268,13 @@ export default function ProfilePage() {
 
   const handlePhotoRemove = (slotIndex) => {
     setPhotos((prev) => {
-      const next = [...prev];
-      while (next.length < PROFILE_PHOTO_SLOTS) next.push(null);
-      next[slotIndex] = null;
-      return next;
+      // ลบรูปที่ตำแหน่ง slotIndex แล้วจัดรูปที่เหลือให้ชิดซ้าย
+      const kept = prev.filter((_, i) => i !== slotIndex && prev[i] != null);
+      const padded = [...kept, ...Array(PROFILE_PHOTO_SLOTS).fill(null)].slice(
+        0,
+        PROFILE_PHOTO_SLOTS,
+      );
+      return padded;
     });
   };
 
@@ -183,6 +286,54 @@ export default function ProfilePage() {
     const m = now.getMonth() - birth.getMonth();
     if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
     return age;
+  };
+
+  const handleConfirmDeleteAccount = async () => {
+    if (deletingAccount) return;
+
+    // ตรวจว่า email ที่พิมพ์ตรงกับ email ปัจจุบันหรือไม่
+    if (
+      !email ||
+      !deleteEmailInput ||
+      deleteEmailInput.trim().toLowerCase() !== email.trim().toLowerCase()
+    ) {
+      setDeleteEmailError(true);
+      return;
+    }
+
+    try {
+      setDeletingAccount(true);
+      setDeleteEmailError(false);
+      setProfileError(null);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token ?? null;
+
+      await axios.delete("/api/me/account", {
+        headers: getAuthHeaders(token),
+      });
+
+      // sign out ฝั่ง client แล้วพาไปหน้า login
+      await supabase.auth.signOut();
+      setDeleteModalOpen(false);
+      merryToast.success(
+        "Account deleted",
+        "Your account has been deleted successfully.",
+        <CheckCircleIcon className="size-10! text-green-500" />,
+      );
+      await router.replace("/login");
+    } catch (err) {
+      const msg =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to delete your account. Please try again.";
+      setProfileError(msg);
+    } finally {
+      setDeletingAccount(false);
+    }
   };
 
   const handleOpenPreview = () => {
@@ -246,10 +397,34 @@ export default function ProfilePage() {
     );
   }
 
+  // ถ้าไม่พบโปรไฟล์ แสดงหน้า error เต็มหน้า
+  if (profileError === "Profile not found.") {
+    return (
+      <>
+        <NavBar />
+        <div className="flex justify-center items-center min-h-[60vh] bg-utility-bg-main">
+          <div className="max-w-md mx-auto text-center px-4">
+            <h1 className="text-headline4 font-bold text-gray-900 mb-2">
+              Profile not found
+            </h1>
+            <p className="text-body3 text-gray-700">
+              We couldn&apos;t find your profile. You may need to create a new one or sign in
+              again.
+            </p>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
   return (
     <>
       {profileError && (
-        <div className="mx-4 mt-4 p-4 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 text-body2" role="alert">
+        <div
+          className="mx-4 mt-4 p-4 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 text-body2"
+          role="alert"
+        >
           {profileError}
         </div>
       )}
@@ -258,7 +433,7 @@ export default function ProfilePage() {
         {!previewOpen && (
         <div className="lg:flex lg:justify-center ">
         
-          <div className="py-10  lg:flex lg:w-[931px]  lg:justify-center  px-4 flex flex-col gap-10 ">
+          <div className="py-10  lg:flex lg:w-[931px]  lg:justify-center  px-4 flex flex-col gap-10 lg:gap-20 ">
             
             <header className="">
               <div>
@@ -384,30 +559,63 @@ export default function ProfilePage() {
                 </h2>
                 <p className="text-gray-800 text-body2 mt-1">Upload at least 2 photos</p>
               </header>
-              <div
-                className="grid grid-cols-2 gap-2 lg:grid-cols-5 lg:gap-6"
-                role="list"
-                aria-label="Profile photo slots"
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handlePhotosDragEnd}
               >
-                {Array.from({ length: PROFILE_PHOTO_SLOTS }, (_, i) => {
-                  const value = photos[i] ?? null;
-                  const hasImage = value != null;
-                  const isFile = value instanceof File;
-                  const imageUrl = typeof value === "string" ? value : null;
+                {(() => {
+                  const photoDragEntries = buildPhotoDragEntries(photos);
                   return (
-                    <PhotoUploadCard
-                      key={i}
-                      slotNumber={i + 1}
-                      hasImage={hasImage}
-                      file={isFile ? value : null}
-                      imageUrl={imageUrl}
-                      onRemove={() => handlePhotoRemove(i)}
-                      onUpload={() => handlePhotoUploadClick(i)}
-                      className="z-10"
-                    />
+                <SortableContext
+                  items={photoDragEntries.map((item) => item.dragId)}
+                  strategy={rectSortingStrategy}
+                >
+                  <div
+                    className="grid grid-cols-2 gap-2 lg:grid-cols-5 lg:gap-6"
+                    role="list"
+                    aria-label="Profile photo slots"
+                  >
+                    {photos.map((value, i) => {
+                      const hasImage = value != null;
+                      const isFile = value instanceof File;
+                      const imageUrl = typeof value === "string" ? value : null;
+                      if (hasImage) {
+                        const photoDragId =
+                          photoDragEntries.find((entry) => entry.index === i)?.dragId ??
+                          `photo:${i}#0`;
+                        return (
+                          <SortablePhotoUploadCard
+                            key={photoDragId}
+                            id={photoDragId}
+                            slotNumber={i + 1}
+                            hasImage
+                            file={isFile ? value : null}
+                            imageUrl={imageUrl}
+                            onRemove={() => handlePhotoRemove(i)}
+                            onUpload={() => handlePhotoUploadClick(i)}
+                            disableTransition={dropJustEnded}
+                          />
+                        );
+                      }
+
+                      return (
+                        <PhotoUploadCard
+                          key={i}
+                          slotNumber={i + 1}
+                          hasImage={false}
+                          file={null}
+                          imageUrl={null}
+                          onRemove={() => handlePhotoRemove(i)}
+                          onUpload={() => handlePhotoUploadClick(i)}
+                        />
+                      );
+                    })}
+                  </div>
+                </SortableContext>
                   );
-                })}
-              </div>
+                })()}
+              </DndContext>
 
               <div className="flex gap-6 justify-center mt-6 lg:hidden">
                 <SecondaryButton
@@ -426,7 +634,20 @@ export default function ProfilePage() {
                   {updating ? "Updating..." : "Update Profile"}
                 </PrimaryButton>
               </div>
+
+              
             </article>
+            <button
+              type="button"
+              className="mt-4 text-body3 font-bold text-gray-700 flex justify-center lg:justify-end cursor-pointer hover:text-red-400 hover:underline"
+              onClick={() => {
+                setDeleteEmailInput("");
+                setDeleteEmailError(false);
+                setDeleteModalOpen(true);
+              }}
+            >
+              Delete account
+            </button>
 
           </div>
 
@@ -442,6 +663,60 @@ export default function ProfilePage() {
         prefilledUser={previewUser}
         leftButton={null}
         rightButton={null}
+      />
+      <Modal
+        open={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setDeleteEmailError(false);
+          setDeletingAccount(false);
+        }}
+        title="Delete Confirmation"
+        message={
+          <div className="flex flex-col gap-2">
+            <p className="text-body3 text-gray-800">
+              Are you sure you want to delete your account?
+            </p>
+            <p className="text-body4 text-gray-600">
+              To confirm, please type this email:&nbsp;
+              <span className="font-semibold text-gray-900">{email || "-"} </span>
+            </p>
+            <InputBar
+              type="email"
+              value={deleteEmailInput}
+              onChange={(e) => {
+                setDeleteEmailInput(e.target.value);
+                if (deleteEmailError) setDeleteEmailError(false);
+              }}
+              placeholder="Type your email to confirm"
+              inputClassName={
+                deleteEmailError
+                  ? "border-red-500 focus:border-red-500 focus:ring-red-100"
+                  : undefined
+              }
+            />
+            {deleteEmailError && (
+              <p className="text-body5 text-red-500">
+                The email you entered doesn&apos;t match. Please type the email shown above.
+              </p>
+            )}
+            {deletingAccount && (
+              <p className="text-body5 text-gray-500">
+                Deleting your account, please wait...
+              </p>
+            )}
+          </div>
+        }
+        leftText="Yes, I want to delete"
+        rightText="No, I don’t"
+        type="secondary"
+        onLeftClick={handleConfirmDeleteAccount}
+        onRightClick={() => {
+          setDeleteModalOpen(false);
+          setDeleteEmailError(false);
+          setDeletingAccount(false);
+        }}
+        fullWidthButtons
       />
       <Footer />
     </>
