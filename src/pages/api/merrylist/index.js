@@ -107,6 +107,8 @@ export default async function handler(req, res) {
 
     const profileById = new Map(targetProfiles.map((p) => [p.id, p]));
 
+    const { start: todayStart, end: todayEnd } = getTodayRange();
+
     // list = คนที่เรา like ทุกคน; status 0 = Not Match yet, 1 = Merry Match!
     const list = outgoingLikes
       .map((swipe) => {
@@ -124,6 +126,10 @@ export default async function handler(req, res) {
           meetingInterest: p.meeting_interest,
           images: (p.images ?? []).map((img) => img.image_url),
           status: theyLikedUs ? 1 : 0, // 1 = Merry Match!, 0 = Not Match yet
+          merryMatchedToday:
+            theyLikedUs &&
+            swipe.created_at >= todayStart &&
+            swipe.created_at <= todayEnd,
         };
       })
       .filter(Boolean);
@@ -149,13 +155,12 @@ export default async function handler(req, res) {
     const merryToYou = pendingWhoLikedUsProfiles.length;
     const merryMatch = list.filter((p) => p.status === 1).length;
 
-    const { start, end } = getTodayRange();
     const usedToday = await prisma.swipe.count({
       where: {
         requester_id: myProfileId,
         created_at: {
-          gte: start,
-          lte: end,
+          gte: todayStart,
+          lte: todayEnd,
         },
       },
     });
