@@ -1,18 +1,30 @@
 import AdminLayout from "@/components/layouts/AdminLayout";
 import PackageForm from "@/components/merry-package/PackageForm";
 import { useRouter } from "next/router";
+import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
+import { merryToast } from "@/components/commons/toast/MerryToast";
 
 export default function AddPackage() {
   const router = useRouter();
 
   async function handleCreate(data) {
-    await fetch("/api/packages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+    try {
+      await fetch("/api/packages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      merryToast.success("Success", "Merry package has been created.");
+      setTimeout(()=> {router.push("/admin/merry-package");},2000)
+    } catch (error) {
+      const msg = err?.message || "Something went wrong";
 
-    router.push("/admin/merry-package");
+      merryToast.error(
+        "Error!",
+        msg,
+        <ExclamationCircleIcon className="size-10! text-red-400" />,
+      );
+    }
   }
 
   return (
@@ -23,6 +35,6 @@ export default function AddPackage() {
         onSubmit={handleCreate}
         onCancel={() => router.push("/admin/merry-package")}
       />
-      </AdminLayout>
+    </AdminLayout>
   );
 }

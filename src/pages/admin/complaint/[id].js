@@ -8,6 +8,8 @@ import Modal from "@/components/commons/modal/modal";
 import { useComplaint } from "@/hooks/complaint/useComplaint";
 import { useComplaintActions } from "@/hooks/complaint/useComplaintAction";
 import { Loading } from "@/components/commons/Loading/Loading";
+import { merryToast } from "@/components/commons/toast/MerryToast";
+import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 
 function ComplaintPageId() {
   const router = useRouter();
@@ -46,11 +48,16 @@ function ComplaintPageId() {
       title: "Cancel Complaint",
       message: "Are you sure to cancel this complaint?",
       leftText: "Yes, cancel this complaint",
-      rightText: "No, give me mpre time",
+      rightText: "No, give me more time",
       action: cancelComplaint,
     },
   };
-  if (loading) return <AdminLayout><Loading /></AdminLayout>;
+  if (loading)
+    return (
+      <AdminLayout>
+        <Loading />
+      </AdminLayout>
+    );
   if (error) return <AdminLayout>Error: {error}</AdminLayout>;
   if (!complaint) return null;
   return (
@@ -165,7 +172,25 @@ function ComplaintPageId() {
             leftText={modalConfig[modalAction]?.leftText}
             rightText={modalConfig[modalAction]?.rightText}
             onLeftClick={async () => {
-              await modalConfig[modalAction]?.action();
+              try {
+                await modalConfig[modalAction]?.action();
+
+                merryToast.success(
+                  "Success",
+                  modalAction === "resolve"
+                    ? "Complaint has been resolved."
+                    : "Complaint has been cancelled.",
+                );
+              } catch (err) {
+                const msg = err?.message || "Something went wrong";
+
+                merryToast.error(
+                  "Missing information!",
+                  msg,
+                  <ExclamationCircleIcon className="size-10! text-red-400" />,
+                );
+              }
+
               setModalAction(null);
             }}
             onRightClick={() => setModalAction(null)}

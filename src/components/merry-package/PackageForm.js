@@ -20,7 +20,7 @@ export default function PackageForm({
   const [imageFile, setImageFile] = useState(null);
   const inputRef = useRef(null);
   const [open, setOpen] = useState(false);
-
+  const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState({
     name: "",
     price: 0,
@@ -64,6 +64,7 @@ export default function PackageForm({
       price: Number(form.price),
       limit_matching: Number(form.limit_matching),
     });
+    setIsLoading(true)
   };
 
   return (
@@ -72,8 +73,8 @@ export default function PackageForm({
       <div className="h-20 flex items-center justify-between px-15 py-4 shrink-0">
         <h4 className="text-headline4 font-bold">{title}</h4>
         <div className="flex gap-4">
-          <SecondaryButton onClick={onCancel}>Cancel</SecondaryButton>
-          <PrimaryButton onClick={handleSubmit}>{submitLabel}</PrimaryButton>
+          <SecondaryButton className="cursor-pointer" onClick={onCancel} disabled={isLoading}>Cancel</SecondaryButton>
+          <PrimaryButton className="cursor-pointer" onClick={handleSubmit} disabled={isLoading}>{submitLabel}</PrimaryButton>
         </div>
       </div>
 
@@ -145,6 +146,7 @@ export default function PackageForm({
             <button
               onClick={() => setOpen(true)}
               className="absolute right-0 top-full mt-2 text-[16px] text-gray-700 cursor-pointer"
+              disabled={isLoading}
             >
               Delete Package
             </button>
@@ -160,6 +162,7 @@ export default function PackageForm({
         rightText="No, I don't want"
         onLeftClick={async () => {
           if (deletePackage) {
+            setIsLoading(true);
             await deletePackage(); // เรียกฟังก์ชันจาก parent
           }
           setOpen(false);

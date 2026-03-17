@@ -17,6 +17,8 @@ import InputBar from "@/components/commons/input/InputBar";
 import { PrimaryButton } from "@/components/commons/button/PrimaryButton";
 import Modal from "@/components/commons/modal/modal";
 import { Loading } from "@/components/commons/Loading/Loading";
+import { merryToast } from "@/components/commons/toast/MerryToast";
+import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 
 import { CSS } from "@dnd-kit/utilities";
 
@@ -113,8 +115,20 @@ function SortableRow({ item, index, onDelete }) {
           leftText="Yes, I want to delete"
           rightText="No, I don't want"
           onLeftClick={async () => {
-            await onDelete(item.id);
-            setOpen(false);
+            try {
+              await onDelete(item.id);
+              setOpen(false);
+
+              merryToast.success("Success", "Deleted package successfull");
+            } catch (err) {
+              const msg = err?.message || "Something went wrong";
+
+              merryToast.error(
+                "Error",
+                msg,
+                <ExclamationCircleIcon className="size-10! text-red-400" />,
+              );
+            }
           }}
           onRightClick={() => {
             setOpen(false);
@@ -134,33 +148,29 @@ function MerryPackage() {
   const [error, setError] = useState([]);
 
   useEffect(() => {
-    try{
-    async function fetchData() {
-      const res = await fetch("/api/admin/merry-package");
-      const data = await res.json();
-      setItems(data);
-      setLoading(true)
+    try {
+      async function fetchData() {
+        const res = await fetch("/api/admin/merry-package");
+        const data = await res.json();
+        setItems(data);
+        setLoading(true);
+      }
+      fetchData();
+    } catch (error) {
+      setError(error);
+    } finally {
+      setLoading(false);
     }
-    fetchData();
-  }
-  catch(error){
-    setError(error)
-  }
-  finally{
-    setLoading(false)
-  }
   }, []);
 
   useEffect(() => {
-    try{
+    try {
       console.log("items updated:", items);
-      setLoading(true)
-    }
-    catch(error){
-      console.log(error)
-    }
-    finally{
-      setLoading(false)
+      setLoading(true);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
     }
   }, [items]);
 
@@ -206,8 +216,13 @@ function MerryPackage() {
       console.error(err);
     }
   }
-  console.log(loading)
-if (loading) return <AdminLayout><Loading /></AdminLayout>;
+  console.log(loading);
+  if (loading)
+    return (
+      <AdminLayout>
+        <Loading />
+      </AdminLayout>
+    );
   return (
     <AdminLayout>
       <div className="h-screen flex flex-col">
@@ -230,7 +245,7 @@ if (loading) return <AdminLayout><Loading /></AdminLayout>;
             />
 
             <PrimaryButton
-              className="w-40 font-bold"
+              className="w-40 font-bold cursor-pointer"
               onClick={() => router.push("/admin/merry-package/add-package")}
             >
               + Add Package
@@ -277,12 +292,11 @@ if (loading) return <AdminLayout><Loading /></AdminLayout>;
                 </table>
               </SortableContext>
             </DndContext>
-            {filteredItems.length === 0 && 
-            <div className=" flex justify-center items-center p-20">
-              <span className="text-gray-700">
-                Not found.
-              </span>
-              </div>}
+            {filteredItems.length === 0 && (
+              <div className=" flex justify-center items-center p-20">
+                <span className="text-gray-700">Not found.</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
