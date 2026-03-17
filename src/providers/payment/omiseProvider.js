@@ -231,11 +231,21 @@ export function createOmisePaymentGatewayProvider() {
           ? headers["omise-signature-timestamp"][0]
           : headers?.["omise-signature-timestamp"];
 
+      console.log("[webhook] signature present:", !!signatureHeader, "| timestamp present:", !!timestamp);
+      console.log("[webhook] raw headers:", JSON.stringify({
+        "omise-signature": headers?.["omise-signature"] ? `${String(headers["omise-signature"]).substring(0, 16)}...` : "(missing)",
+        "omise-signature-timestamp": headers?.["omise-signature-timestamp"] ?? "(missing)",
+      }));
+
       if (!signatureHeader || !timestamp) {
+        console.error("[webhook] MISSING_OMISE_SIGNATURE_HEADERS — Omise did not send signature headers. Is the webhook secret configured in Omise dashboard?");
         const err = new Error("MISSING_OMISE_SIGNATURE_HEADERS");
         err.statusCode = 401;
         throw err;
       }
+
+      const hasSecret = !!process.env.OMISE_WEBHOOK_SECRET;
+      console.log("[webhook] OMISE_WEBHOOK_SECRET env set:", hasSecret, "| length:", (process.env.OMISE_WEBHOOK_SECRET || "").length);
 
       const ok = verifyOmiseWebhookSignature({
         rawBodyString,
@@ -244,6 +254,7 @@ export function createOmisePaymentGatewayProvider() {
       });
 
       if (!ok) {
+        console.error("[webhook] INVALID_OMISE_SIGNATURE — signature mismatch. Check that OMISE_WEBHOOK_SECRET matches the secret in Omise dashboard (test vs live).");
         const err = new Error("INVALID_OMISE_SIGNATURE");
         err.statusCode = 401;
         throw err;
