@@ -139,7 +139,9 @@ export function ProfilePopup({
   const isLongName = isLg ? name.length > 12 : name.length > 10;
   const displayName =
     showFullName || !isLongName ? name : `${name.slice(0, truncateLen)}...`;
-  const fullNameOver12 = name.length > 12;
+
+  // สำหรับ mobile: ถ้าชื่อยาว ให้แบ่งเป็น 2 บรรทัดเมื่อขยาย
+  const fullNameOver12 = !isLg && name.length > 12;
   const getTwoLines = (value) => {
     if (value.length <= 12) return { line1: value, line2: "" };
     const mid = Math.ceil(value.length / 2);
@@ -150,9 +152,9 @@ export function ProfilePopup({
       line2: value.slice(splitAt).trim(),
     };
   };
-  const { line1: fullNameLine1, line2: fullNameLine2 } = fullNameOver12
-    ? getTwoLines(name)
-    : { line1: name, line2: "" };
+  const { line1: fullNameLine1, line2: fullNameLine2 } =
+    fullNameOver12 && !isLg ? getTwoLines(name) : { line1: name, line2: "" };
+  const canToggleName = isLongName;
 
   // ---------- ฟังก์ชันเลื่อนรูป: ก่อนหน้า / ถัดไป (วนเป็นวงกลม) ----------
   const goPrev = () =>
@@ -166,7 +168,7 @@ export function ProfilePopup({
   // ---------- Early return: ยังไม่มี user (กำลังโหลด / error) แสดงกล่องข้อความกลางจอ ----------
   if (!user) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20">
+      <div className="fixed inset-0 lg:z-60 flex items-center justify-center bg-foreground/20">
         {error ? (
           <div className="rounded-3xl bg-white px-6 py-6 shadow-lg max-w-sm w-full mx-4 flex flex-col items-center justify-center">
             <span className="text-body2 text-red-600">{error}</span>
@@ -188,10 +190,10 @@ export function ProfilePopup({
 
   // ---------- Render หลัก: Modal การ์ดโปรไฟล์ ----------
   return (
-    <div className="fixed">
+    <div className="fixed inset-0 z-60">
       {/* Overlay: เต็มจอ, backdrop มัว, scroll ได้, จัดกลาง (มือถือ pt-[50px] เพื่อไม่ทับ header) */}
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-foreground/20 pt-[50px] lg:pt-0"
+        className="fixed inset-0 z-60 flex items-center justify-center overflow-y-auto bg-foreground/20 pt-[50px] lg:pt-0"
         aria-modal="true"
         role="dialog"
         aria-labelledby="profile-heading"
@@ -304,17 +306,25 @@ export function ProfilePopup({
           <section className="px-4 pt-12 lg:pt-0 lg:pl-15 py-6 lg:pb-16" aria-labelledby="profile-heading">
             {/* Header: ชื่อ (คลิกสลับย่อ/เต็ม), อายุ, ไอคอน location + สถานที่ */}
             <header>
-              <div className="flex items-center gap-4">
+              <div className="flex items-start gap-4">
                 <h1
                   id="profile-heading"
-                  onClick={() => setShowFullName((prev) => !prev)}
-                  className={`cursor-pointer text-gray-900 font-extrabold ${showFullName && ((fullNameOver12 && fullNameLine2) || isLongName)
-                      ? "text-headline4 leading-tight max-w-[220px]"
+                  onClick={() => {
+                    if (!canToggleName) return;
+                    setShowFullName((prev) => !prev);
+                  }}
+                  className={`${canToggleName ? "cursor-pointer" : ""} text-gray-900 font-extrabold ${
+                    showFullName
+                      ? "text-headline4 leading-tight"
                       : "text-headline2 whitespace-nowrap"
-                    }`}
+                  }`}
                   title="Click to toggle full name"
                 >
-                  {fullNameOver12 && (showFullName || !isLongName) && fullNameLine2 ? (
+                  {/* Desktop: ไม่ต้องแบ่งบรรทัด แค่ย่อ/ขยายและใช้ฟอนต์เล็กลงตอนขยาย */}
+                  {isLg ? (
+                    showFullName ? name : displayName
+                  ) : // Mobile: ถ้าชื่อยาว แบ่ง 2 บรรทัดตอนขยาย
+                  fullNameOver12 && (showFullName || !isLongName) && fullNameLine2 ? (
                     <>
                       {fullNameLine1}
                       <br />
@@ -324,7 +334,15 @@ export function ProfilePopup({
                     displayName
                   )}
                 </h1>
-                <p className="text-headline2 text-gray-700 font-extrabold">{user.age}</p>
+                <p
+                  className={`text-gray-700 font-extrabold ${
+                    showFullName && ((fullNameOver12 && fullNameLine2) || isLongName)
+                      ? "text-headline4"
+                      : "text-headline2"
+                  }`}
+                >
+                  {user.age}
+                </p>
               </div>
               <div className="flex gap-4">
                 <img src="/merry_icon/icon-location-popup.svg" alt="" width={24} height={24} />
@@ -351,8 +369,17 @@ export function ProfilePopup({
 
               {/* About me: คำอธิบายสั้นๆ ของ user (ไม่มีแสดง "-") */}
               <section aria-labelledby="about-heading">
-                <h2 id="about-heading" className="text-headline4 font-bold text-gray-900 text-left">About me</h2>
-                <p className="mt-2 lg:w-full font-medium text-gray-900 text-left">{user.about || "-"}</p>
+                <h2
+                  id="about-heading"
+                  className="text-headline4 font-bold text-gray-900 text-left"
+                >
+                  About me
+                </h2>
+                <p
+                  className="mt-2 max-w-xl font-medium text-gray-900 text-left break-all lg:w-full lg:max-h-24 lg:overflow-y-auto"
+                >
+                  {user.about || "-"}
+                </p>
               </section>
 
               {/* Hobbies and Interests: แสดงเป็น pill (border purple) จาก user.interests */}
