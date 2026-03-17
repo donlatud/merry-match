@@ -25,7 +25,7 @@ export default function NavBar() {
   };
 
   return (
-    <div className="sticky top-0 z-50">
+    <div className="sticky top-0 z-70">
       <nav className="h-13 lg:h-22 border-b bg-utility-white shadow-button">
         <div className="h-full w-full max-w-[1120px] lg:mx-auto px-5 flex justify-between items-center">
           {/* Logo */}
