@@ -37,6 +37,9 @@ export default async function handler(req, res) {
     const profileId = profile.id;
     const profileImages = profile.images ?? [];
 
+    // เก็บ URL รูปจากข้อความแชทไว้เพื่อลบออกจาก Supabase Storage หลังจบ transaction
+    let chatImageUrlsToDelete = [];
+
     // ใช้ transaction เพื่อลบข้อมูลที่เกี่ยวข้องทั้งหมด รวมถึง chat rooms และ messages และ User
     await prisma.$transaction(async (tx) => {
       // หา chat rooms ที่เกี่ยวข้องกับ profile นี้
@@ -49,6 +52,22 @@ export default async function handler(req, res) {
       const roomIds = rooms.map((r) => r.id);
 
       if (roomIds.length > 0) {
+        // ดึงข้อความที่มีรูปทั้งหมดจากห้องเหล่านี้ เพื่อนำ URL ไปลบออกจาก Storage
+        const messagesWithImages = await tx.message.findMany({
+          where: {
+            room_id: { in: roomIds },
+            image_urls: {
+              isEmpty: false,
+            },
+          },
+          select: {
+            image_urls: true,
+          },
+        });
+        chatImageUrlsToDelete = messagesWithImages.flatMap(
+          (m) => m.image_urls ?? [],
+        );
+
         // ลบข้อความในห้องแชททั้งหมด
         await tx.message.deleteMany({
           where: { room_id: { in: roomIds } },
@@ -123,6 +142,25 @@ export default async function handler(req, res) {
     } catch (storageErr) {
       // ถ้าลบไฟล์ไม่ได้ ไม่ต้อง fail การลบ account ทั้งหมด แค่ log ไว้ก็พอ
       console.error("Failed to delete profile images from storage:", storageErr);
+    }
+
+    // ลบไฟล์รูปจากห้องแชทใน Supabase Storage (bucket: chat-images) ถ้ามี
+    try {
+      const CHAT_BUCKET = "chat-images";
+      const chatImagePaths = chatImageUrlsToDelete
+        .filter((url) => typeof url === "string" && url.trim().length > 0)
+        .map((url) => {
+          const marker = `${CHAT_BUCKET}/`;
+          const idx = url.indexOf(marker);
+          if (idx === -1) return url;
+          return url.slice(idx + marker.length);
+        });
+
+      if (chatImagePaths.length > 0) {
+        await supabaseServer.storage.from(CHAT_BUCKET).remove(chatImagePaths);
+      }
+    } catch (chatStorageErr) {
+      console.error("Failed to delete chat images from storage:", chatStorageErr);
     }
 
     // ลบ Supabase Auth user (ต้องใช้ service role key ใน supabaseServer)
