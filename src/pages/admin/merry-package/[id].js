@@ -2,6 +2,9 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import PackageForm from "@/components/merry-package/PackageForm";
 import AdminLayout from "@/components/layouts/AdminLayout";
+import { merryToast } from "@/components/commons/toast/MerryToast";
+import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
+import { Loading } from "@/components/commons/Loading/Loading";
 
 export default function EditPackage() {
   const router = useRouter();
@@ -39,10 +42,17 @@ export default function EditPackage() {
       });
 
       if (!res.ok) throw new Error("Failed to update package");
-
+      merryToast.success("Success", "Updated package successfully");
       router.push("/admin/merry-package");
     } catch (err) {
       console.error(err);
+      const msg = err?.message || "Something went wrong";
+
+      merryToast.error(
+        "Error",
+        msg,
+        <ExclamationCircleIcon className="size-10! text-red-400" />,
+      );
     }
   }
 
@@ -53,13 +63,22 @@ export default function EditPackage() {
         headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) throw new Error("Failed to delete package");
-      router.push("/admin/merry-package");
+      merryToast.success("Success", "Updated package successfully");
+      setTimeout(() => {
+        router.push("/admin/merry-package");
+      }, 2000);
     } catch (err) {
-      console.error(err);
+      const msg = err?.message || "Something went wrong";
+
+      merryToast.error(
+        "Error!",
+        msg,
+        <ExclamationCircleIcon className="size-10! text-red-400" />,
+      );
     }
   }
 
-  if (loading) return null; // หรือใส่ spinner ก็ได้
+  if (loading) return <AdminLayout><Loading /></AdminLayout>;
   if (!data) return null;
 
   return (

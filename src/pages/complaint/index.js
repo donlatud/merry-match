@@ -83,7 +83,7 @@ function ComplaintPage() {
           <div className="lg:mx-0 mx-auto lg:my-auto max-w-137">
             <span className="text-beige-700 text-body4 ">COMPLAINT</span>
             <h2 className="text-headline2 text-purple-500 mb-10">
-              If you hav any trouble Don’t be afraid to tell us!
+              If you have any trouble Don’t be afraid to tell us!
             </h2>
 
             <form
