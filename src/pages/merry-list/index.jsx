@@ -475,7 +475,7 @@ export default function MerryListPage() {
       {/* Modal: แนะนำแพ็กเกจสำหรับ Merry to you (ไม่มีปุ่มกากบาท / กดรอบนอกไม่ปิด) */}
       {showPlanModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          className="fixed inset-0 z-100 flex items-center justify-center bg-black/40 px-4"
           onClick={() => setShowPlanModal(false)}
         >
           <div
@@ -485,7 +485,7 @@ export default function MerryListPage() {
             <div className="flex flex-col gap-6">
               <div className="flex flex-col gap-2">
                 <h2 className="text-headline4 font-bold text-purple-500">
-                  See everyone who merry you
+                  See who merry you
                 </h2>
                 <p className="text-body3 text-gray-600 max-w-[373px] leading-relaxed">
                   Upgrade your plan to view all people who merry you in full detail and start matching with them.
