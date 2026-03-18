@@ -89,7 +89,7 @@ export default function PackageForm({
                 <InputBar
                   value={form.name}
                   onChange={handleInputChange("name")}
-                  label="Package Name *"
+                  label={<>Package Name <span className="text-utility-red">*</span></>}
                   className="w-full"
                 />
 
@@ -98,7 +98,7 @@ export default function PackageForm({
                   min={0}
                   value={form.price}
                   onChange={handleInputChange("price")}
-                  label="Package Price *"
+                  label={<>Package Price <span className="text-utility-red">*</span></>}
                   className="w-full"
                 />
               </div>
@@ -108,7 +108,11 @@ export default function PackageForm({
                   value={form.limit_matching}
                   onChange={handleInputChange("limit_matching")}
                   min={0}
-                  label="Merry Limit *"
+                  label={
+                    <>
+                      Merry Limit <span className="text-utility-red">*</span>
+                    </>
+                  }
                   className="w-full"
                 />
 

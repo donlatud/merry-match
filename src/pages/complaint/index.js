@@ -1,5 +1,4 @@
 import Image from "next/image";
-
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import InputBar from "@/components/commons/input/InputBar";
@@ -13,58 +12,78 @@ import { CheckCircleIcon } from "@heroicons/react/24/solid";
 function ComplaintPage() {
   const [issue, setIssue] = useState("");
   const [desc, setDesc] = useState("");
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState({
+    issue: "",
+    desc: "",
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   const { createIssue } = usePostComplaint();
 
+  // ✅ แยก validation function (reuse ได้)
+  const validateIssue = (value) => {
+    if (!value.trim()) return "Issue is required.";
+    if (value.trim().length < 5)
+      return "Issue must be at least 5 characters.";
+    if (value.length > 100)
+      return "Issue must be less than 100 characters.";
+    return "";
+  };
+
+  const validateDesc = (value) => {
+    if (!value.trim()) return "Description is required.";
+    if (value.trim().length < 10)
+      return "Please enter at least 10 characters.";
+    return "";
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
-    if (!issue || !desc) {
-      const msg = "Issue and Description are required!";
-      setError(msg);
-      merryToast.error(
-        "Missing information!",
-        msg,
-        <ExclamationCircleIcon className="size-10! text-red-400" />,
-      );
-      return;
-    }
+    // ✅ validate ทั้งหมดก่อน submit
+    const issueError = validateIssue(issue);
+    const descError = validateDesc(desc);
+
+    setErrors({
+      issue: issueError,
+      desc: descError,
+    });
+
+    if (issueError || descError) return;
+
     try {
-      setIsLoading(true)
+      setIsLoading(true);
+
       const data = { issue, description: desc };
       const success = await createIssue(data);
-      console.log(success);
+
       if (!success) {
-        const msg = "Invalid issue or description";
         merryToast.error(
           "Create Issue failed!",
-          msg,
+          "Invalid data",
           <ExclamationCircleIcon className="size-10! text-red-400" />,
         );
         return;
       }
+
       merryToast.success(
         "Success!",
         "Create issue success!",
         <CheckCircleIcon className="size-10! text-green-500" />,
       );
-      setIssue("")
-      setDesc("")
+
+      // reset
+      setIssue("");
+      setDesc("");
+      setErrors({ issue: "", desc: "" });
     } catch (error) {
-      console.log(error);
-      const msg = error.message;
-      setError(msg);
       merryToast.error(
         "Error",
-        msg,
+        error.message,
         <ExclamationCircleIcon className="size-10! text-red-400" />,
       );
-    }
-    finally{
-      setIsLoading(false)
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -78,12 +97,14 @@ function ComplaintPage() {
             alt="Login hero"
             width={177}
             height={266}
-            className="lg:w-112.5  lg:h-169.25 mx-auto lg:mx-0"
+            className="lg:w-112.5 lg:h-169.25 mx-auto lg:mx-0"
           />
+
           <div className="lg:mx-0 mx-auto lg:my-auto max-w-137">
-            <span className="text-beige-700 text-body4 ">COMPLAINT</span>
-            <h2 className="text-headline2 text-purple-500 mb-10">
-              If you have any trouble Don’t be afraid to tell us!
+            <span className="text-beige-700 text-body4">COMPLAINT</span>
+            <h2 className="lg:text-headline2 text-purple-500 mb-10 text-headline3">
+              If you have any trouble <br />
+              Don’t be afraid to tell us!
             </h2>
 
             <form
@@ -94,52 +115,77 @@ function ComplaintPage() {
               <div>
                 <label className="block text-sm mb-1">Issue</label>
                 <InputBar
-                  type="text"
                   value={issue}
-                  onChange={(e) => setIssue(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setIssue(value);
+
+                    setErrors((prev) => ({
+                      ...prev,
+                      issue: validateIssue(value),
+                    }));
+                  }}
                   placeholder="Enter your issue."
-                  maxLength={30}
-                  error={error}
+                  error={errors.issue}
                 />
+
+                {errors.issue && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.issue}
+                  </p>
+                )}
               </div>
 
               {/* Description */}
               <div>
                 <label className="block text-sm mb-1">Description</label>
-                <div className="relative mb-4">
-                  <textarea
-                    type="textarea"
-                    value={desc}
-                    onChange={(e) => setDesc(e.target.value)}
-                    placeholder="Please describe ..."
-                    className={`
-                            h-49 
-                            w-full 
-                            border 
-                            rounded-lg 
-                            px-3 
-                            py-3 
-                            pr-4            
-                            border-gray-400
-                            outline-none
-                            focus:border-purple-500
-                            placeholder:text-gray-600
-                            ${error ? "border-red-500" : "border-gray-400"}`}
-                    rows={4}
-                    cols={40}
-                    maxLength={100}
-                    error={error}
-                  />
-                </div>
+
+                <textarea
+                  value={desc}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setDesc(value);
+
+                    setErrors((prev) => ({
+                      ...prev,
+                      desc: validateDesc(value),
+                    }));
+                  }}
+                  placeholder="Please describe ..."
+                  className={`
+                    h-49 w-full border rounded-lg px-3 py-3
+                    outline-none focus:border-purple-500
+                    ${
+                      errors.desc
+                        ? "border-red-500"
+                        : "border-gray-400"
+                    }
+                  `}
+                  maxLength={500}
+                />
+
+                <p className="text-sm text-gray-500">
+                  {desc.length}/500
+                </p>
+
+                {errors.desc && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.desc}
+                  </p>
+                )}
               </div>
-              {/* Error */}
-              {/* {error && <p className="text-red-500 text-sm mb-3">{error}</p>} */}
 
               {/* Submit */}
               <PrimaryButton
                 type="submit"
-                className="lg:w-25.5 bg-red-500 text-white rounded-full py-3 mb-4"
-                disabled={isLoading}
+                className="lg:w-25.5 bg-red-500 text-white rounded-full py-3 mb-4 cursor-pointer"
+                disabled={
+                  isLoading ||
+                  !issue.trim() ||
+                  !desc.trim() ||
+                  errors.issue ||
+                  errors.desc
+                }
               >
                 Submit
               </PrimaryButton>
@@ -153,4 +199,3 @@ function ComplaintPage() {
 }
 
 export default ComplaintPage;
-

@@ -39,7 +39,7 @@ function ImageUploadSection({ iconUrl, setIconUrl, supabase }) {
   return (
     <div className="w-25 h-33 flex flex-col gap-2">
       <label className="block mt-2 -mb-1 text-body2 font-medium text-black">
-        Icon<span className="text-red-500">*</span>
+        Icon <span className="text-red-500">*</span>
       </label>
 
       <div className="relative w-25 h-25 rounded-lg flex items-center justify-center cursor-pointer">

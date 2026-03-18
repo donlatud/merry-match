@@ -14,9 +14,9 @@ function LoginPage() {
   const { login } = useAuth();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,17 +25,27 @@ function LoginPage() {
     if (!identifier || !password || identifier === "admin") {
       const msg = "Username/email and password are required";
       setError(msg);
-      merryToast.error("Missing information!", msg, <ExclamationCircleIcon className="size-10! text-red-400" />);
+      merryToast.error(
+        "Missing information!",
+        msg,
+        <ExclamationCircleIcon className="size-10! text-red-400" />,
+      );
       return;
     }
 
     try {
+      setLoading(true);
       const data = { identifier, password };
       const success = await login(data);
       if (!success) {
+        setLoading(false);
         const msg = "Invalid email/username or password";
         setError(msg);
-        merryToast.error("Login failed!", msg, <ExclamationCircleIcon className="size-10! text-red-400" />);
+        merryToast.error(
+          "Login failed!",
+          msg,
+          <ExclamationCircleIcon className="size-10! text-red-400" />,
+        );
         return;
       }
 
@@ -48,9 +58,16 @@ function LoginPage() {
         router.push("/");
       }, 1500); // หน่วง 1.5 วินาที
     } catch (error) {
+      setLoading(false);
+      console.log(loading);
+      console.log(error);
       const msg = error.message || "Something went wrong";
       setError(msg);
-      merryToast.error("Error", msg, <ExclamationCircleIcon className="size-10! text-red-400" />);
+      merryToast.error(
+        "Error",
+        msg,
+        <ExclamationCircleIcon className="size-10! text-red-400" />,
+      );
     }
   };
   return (
@@ -73,7 +90,7 @@ function LoginPage() {
             className="lg:w-112.5  lg:h-[677px] mx-auto lg:mx-0"
           />
           <div className="lg:mx-0 mx-auto lg:my-auto max-w-108.75">
-            <span className="text-beige-700 text-body4 ">Login</span>
+            <span className="text-beige-700 text-body4 ">LOGIN</span>
             <h2 className="text-headline2 text-purple-500 mb-10">
               Welcome back to Merry Match
             </h2>
@@ -112,9 +129,10 @@ function LoginPage() {
               {/* Submit */}
               <PrimaryButton
                 type="submit"
-                className="w-full bg-red-500 text-white rounded-full py-3 mb-4"
+                className="w-full bg-red-500 text-white rounded-full py-3 mb-4 cursor-pointer"
+                disabled={loading}
               >
-                Login
+                Log in
               </PrimaryButton>
 
               {/* Sign up link */}

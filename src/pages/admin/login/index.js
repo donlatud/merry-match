@@ -14,9 +14,9 @@ function LoginPage(){
     const {login} = useAuth();
     const [identifier, setIdentifier] = useState("");
     const [password, setPassword] = useState("");
-    const [showPassword,setShowPassword] = useState(false);
     const [error, setError] = useState("");
     const router = useRouter();
+    const [loading, setLoading] = useState(false);
 
 
 const handleSubmit = async (e) => {
@@ -31,9 +31,11 @@ const handleSubmit = async (e) => {
   }
 
   try {
+    setLoading(true);
     const data = { identifier, password };
     const success = await login(data);
     if (!success) {
+      setLoading(false);
       const msg = "Invalid email/username or password";
       setError(msg);
       merryToast.error("Login failed!", msg, <ExclamationCircleIcon className="size-10! text-red-400" />);
@@ -49,6 +51,7 @@ const handleSubmit = async (e) => {
       router.push("/admin");
     }, 1500); // หน่วง 1.5 วินาที
   } catch (error) {
+    setLoading(false);
     const msg = error.message || "Something went wrong";
     setError(msg);
     merryToast.error("Error", msg, <ExclamationCircleIcon className="size-10! text-red-400" />);
@@ -71,7 +74,7 @@ const handleSubmit = async (e) => {
             className="lg:w-112.5  lg:h-[677px] mx-auto lg:mx-0"
         />
         <div className="lg:mx-0 mx-auto lg:my-auto max-w-108.75">
-            <span className="text-beige-700 text-body4 ">Login</span>
+            <span className="text-beige-700 text-body4 ">LOGIN</span>
             <h2 className="text-headline2 text-purple-500 mb-10">Welcome back to Merry Match</h2>
 
         <form
@@ -112,8 +115,10 @@ const handleSubmit = async (e) => {
         {/* Submit */}
         <PrimaryButton
           type="submit"
-          className="w-full bg-red-500 text-white rounded-full py-3 mb-4">
-          Login
+          className="w-full bg-red-500 text-white rounded-full py-3 mb-4 cursor-pointer"
+          disabled={loading}
+          >
+          Log in
         </PrimaryButton>
 
 

@@ -13,27 +13,6 @@ import {
 import Image from "next/image";
 import { enUS } from "date-fns/locale";
 
-
-// ====== AGE 18+ LOGIC ======
-
-const today = new Date();
-
-const maxDate18 = new Date(
-  today.getFullYear() - 18,
-  today.getMonth(),
-  today.getDate(),
-);
-
-const isOver18 = (birthDate) => {
-  const cutoff = new Date(
-    today.getFullYear() - 18,
-    today.getMonth(),
-    today.getDate(),
-  );
-
-  return birthDate <= cutoff;
-};
-
 const DatePicker = ({
   label = "Select date",
   value,
@@ -46,11 +25,15 @@ const DatePicker = ({
 }) => {
   const [open, setOpen] = React.useState(false);
 
+  // ใช้ today ตัวเดียว
   const today = React.useMemo(() => new Date(), []);
+
+  // age limit logic
   const endMonth = minAge != null ? subYears(today, minAge) : undefined;
   const startMonth = minAge != null ? subYears(today, 100) : undefined;
   const disabledAfter = minAge != null ? subYears(today, minAge) : undefined;
-  const defaultMonth = value ?? endMonth ?? today;
+
+  const defaultMonth = value || endMonth || today;
 
   return (
     <Field className="mx-auto w-full">
@@ -59,40 +42,43 @@ const DatePicker = ({
           {label}
         </label>
       )}
+
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
             data-empty={!value}
             className={`
-            relative
-            data-[empty=true]:text-muted-foreground 
-            justify-between 
-            text-left 
-            font-normal             
-            w-full
-            h-12
-            px-4
-            py-3
-            border
-            rounded-lg
-            focus:border-purple-500
-            outline-none
-            pr-4
-            text-body2
-            ${error ? "border-utility-red" : ""}
-            ${className}
-          `}
+              relative
+              data-[empty=true]:text-muted-foreground 
+              justify-between 
+              text-left 
+              font-normal             
+              w-full
+              h-12
+              px-4
+              py-3
+              border
+              rounded-lg
+              focus:border-purple-500
+              outline-none
+              pr-4
+              text-body2
+              ${error ? "border-utility-red" : ""}
+              ${className}
+            `}
           >
             {value ? (
               <span className="text-body2">
-                {format(value, "PPP", { locale: enUS })}
+                {/* FIX: ใช้ value จริง */}
+                {format(value, "dd/MM/yyyy")}
               </span>
             ) : (
               <span className="text-body2 text-gray-600 pl-1">
                 {placeholder}
               </span>
             )}
+
             {error && !hideErrorIcon && (
               <Image
                 src="/merry_icon/icon-exclamation.svg"
@@ -102,6 +88,7 @@ const DatePicker = ({
                 height={16}
               />
             )}
+
             <Image
               src="/merry_icon/icon-calendar.svg"
               alt="calendar-icon"
@@ -111,6 +98,7 @@ const DatePicker = ({
             />
           </Button>
         </PopoverTrigger>
+
         <PopoverContent className="w-auto overflow-hidden p-0" align="start">
           <Calendar
             mode="single"
@@ -118,32 +106,37 @@ const DatePicker = ({
             defaultMonth={defaultMonth}
             startMonth={startMonth}
             endMonth={endMonth}
-            disabled={disabledAfter != null ? { after: disabledAfter } : undefined}
+            disabled={
+              disabledAfter != null ? { after: disabledAfter } : undefined
+            }
             captionLayout="dropdown"
-            onSelect={onChange}
+            // FIX: กัน undefined
+            onSelect={(date) => {
+              if (date) onChange(date);
+            }}
             locale={enUS}
             className="
-    [&_[data-selected=true]>button]:bg-purple-500 
-    [&_[data-selected=true]>button]:text-white
-    [&_[data-selected=true]>button]:rounded-full
-    [&_[data-selected=true]>button]:border-none  
-    [&_button[data-selected-single=true]]:rounded-full!
+              [&_[data-selected=true]>button]:bg-purple-500 
+              [&_[data-selected=true]>button]:text-white
+              [&_[data-selected=true]>button]:rounded-full
+              [&_[data-selected=true]>button]:border-none  
+              [&_button[data-selected-single=true]]:rounded-full!
 
-    [&_.rdp-day_range_start]:bg-transparent
-    [&_.rdp-day_range_end]:bg-transparent
+              [&_.rdp-day_range_start]:bg-transparent
+              [&_.rdp-day_range_end]:bg-transparent
 
-    [&_[data-focus=true]>button]:rounded-full!
-    [&_[data-focus=true]>button]:border-purple-500!
-    [&_[data-focus=true]>button]:ring-0!
-    [&_[data-focus=true]>button]:outline-none!      
+              [&_[data-focus=true]>button]:rounded-full!
+              [&_[data-focus=true]>button]:border-purple-500!
+              [&_[data-focus=true]>button]:ring-0!
+              [&_[data-focus=true]>button]:outline-none!      
 
-    [&_[data-today=true]>button]:rounded-full
-    [&_[data-today=true]>button]:border-2
-    [&_[data-today=true]>button]:bg-gray-300
+              [&_[data-today=true]>button]:rounded-full
+              [&_[data-today=true]>button]:border-2
+              [&_[data-today=true]>button]:bg-gray-300
 
-    [&_[data-today=true][data-selected=true]>button]:bg-purple-500
-    [&_[data-today=true][data-selected=true]>button]:text-white
-  "
+              [&_[data-today=true][data-selected=true]>button]:bg-purple-500
+              [&_[data-today=true][data-selected=true]>button]:text-white
+            "
           />
         </PopoverContent>
       </Popover>
@@ -153,11 +146,11 @@ const DatePicker = ({
 
 export default DatePicker;
 
-// example
-//   const [date, setDate] = useState("");
-//       <DatePicker
-//       value={date}
-//       onChange={setDate}
-//       placeholder="Choose date" เปลี่ยน place holder
-//     />
-          
+// const [date, setDate] = React.useState();
+
+// <DatePicker
+//   value={date}
+//   onChange={setDate}
+//   placeholder="Choose date"
+//   minAge={18}
+// />
