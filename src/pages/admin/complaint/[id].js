@@ -10,6 +10,7 @@ import { useComplaintActions } from "@/hooks/complaint/useComplaintAction";
 import { Loading } from "@/components/commons/Loading/Loading";
 import { merryToast } from "@/components/commons/toast/MerryToast";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
+import { CheckCircleIcon } from "@heroicons/react/24/solid";
 
 function ComplaintPageId() {
   const router = useRouter();
@@ -180,6 +181,7 @@ function ComplaintPageId() {
                   modalAction === "resolve"
                     ? "Complaint has been resolved."
                     : "Complaint has been cancelled.",
+                  <CheckCircleIcon className="size-10! text-green-500" />,
                 );
               } catch (err) {
                 const msg = err?.message || "Something went wrong";

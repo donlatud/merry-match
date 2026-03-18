@@ -5,6 +5,7 @@ import AdminLayout from "@/components/layouts/AdminLayout";
 import { merryToast } from "@/components/commons/toast/MerryToast";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import { Loading } from "@/components/commons/Loading/Loading";
+import { CheckCircleIcon } from "@heroicons/react/24/solid";
 
 export default function EditPackage() {
   const router = useRouter();
@@ -42,7 +43,8 @@ export default function EditPackage() {
       });
 
       if (!res.ok) throw new Error("Failed to update package");
-      merryToast.success("Success", "Updated package successfully");
+      merryToast.success("Success", "Updated package successfully",
+      <CheckCircleIcon className="size-10! text-green-500" />);
       router.push("/admin/merry-package");
     } catch (err) {
       console.error(err);
@@ -63,7 +65,8 @@ export default function EditPackage() {
         headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) throw new Error("Failed to delete package");
-      merryToast.success("Success", "Updated package successfully");
+      merryToast.success("Success", "Package deleted successfully",
+      <CheckCircleIcon className="size-10! text-green-500" />);
       setTimeout(() => {
         router.push("/admin/merry-package");
       }, 2000);

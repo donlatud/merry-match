@@ -3,6 +3,7 @@ import PackageForm from "@/components/merry-package/PackageForm";
 import { useRouter } from "next/router";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import { merryToast } from "@/components/commons/toast/MerryToast";
+import { CheckCircleIcon } from "@heroicons/react/24/solid";
 
 export default function AddPackage() {
   const router = useRouter();
@@ -14,7 +15,8 @@ export default function AddPackage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      merryToast.success("Success", "Merry package has been created.");
+      merryToast.success("Success", "Merry package has been created.",
+      <CheckCircleIcon className="size-10! text-green-500" />);
       setTimeout(()=> {router.push("/admin/merry-package");},2000)
     } catch (error) {
       const msg = err?.message || "Something went wrong";

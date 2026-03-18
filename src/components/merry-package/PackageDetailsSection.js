@@ -57,7 +57,7 @@ function PackageDetailsSection({ details, setDetails }) {
             {details.map((item, index) => (
               <div key={item.id} className="flex flex-col gap-6">
                 <h1 className="px-7">
-                  Detail
+                  Detail &nbsp;
                   {index === 0 && (
                     <span className="text-red-500">*</span>
                   )}
@@ -78,13 +78,13 @@ function PackageDetailsSection({ details, setDetails }) {
         <SecondaryButton
           type="button"
           onClick={addDetail}
-          className="w-35 text-red-600 font-bold cursor-pointer"
+          className="w-35 text-red-600 font-bold cursor-pointer mx-7"
         >
           + Add detail
         </SecondaryButton>
 
         {hasError && (
-          <p className="text-red-500 text-sm">
+          <p className="text-red-500 text-sm mx-7">
             All detail fields are required.
           </p>
         )}

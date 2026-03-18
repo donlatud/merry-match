@@ -19,6 +19,7 @@ import Modal from "@/components/commons/modal/modal";
 import { Loading } from "@/components/commons/Loading/Loading";
 import { merryToast } from "@/components/commons/toast/MerryToast";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
+import { CheckCircleIcon } from "@heroicons/react/24/solid";
 
 import { CSS } from "@dnd-kit/utilities";
 
@@ -119,7 +120,11 @@ function SortableRow({ item, index, onDelete }) {
               await onDelete(item.id);
               setOpen(false);
 
-              merryToast.success("Success", "Deleted package successfull");
+              merryToast.success(
+                "Success",
+                "Package deleted successfully",
+                <CheckCircleIcon className="size-10! text-green-500" />,
+              );
             } catch (err) {
               const msg = err?.message || "Something went wrong";
 
@@ -210,7 +215,6 @@ function MerryPackage() {
       });
 
       if (!res.ok) throw new Error("Failed to delete package");
-
       setItems((prev) => prev.filter((item) => item.id !== id));
     } catch (err) {
       console.error(err);
