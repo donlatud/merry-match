@@ -430,7 +430,6 @@ export default function ProfilePage() {
       )}
       <div className="lg:justify-center">
         <NavBar />
-        {!previewOpen && (
         <div className="lg:flex lg:justify-center ">
         
           <div className="py-10  lg:flex lg:w-[931px]  lg:justify-center  px-4 flex flex-col gap-10 lg:gap-20 ">
@@ -652,7 +651,6 @@ export default function ProfilePage() {
           </div>
 
         </div>
-        )}
 
       </div>
       <ProfilePopup
