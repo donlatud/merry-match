@@ -172,7 +172,7 @@ export function ProfilePopup({
   // ---------- Early return: ยังไม่มี user (กำลังโหลด / error) แสดงกล่องข้อความกลางจอ ----------
   if (!user) {
     const content = (
-      <div className="fixed inset-0 z-60 flex items-center justify-center bg-foreground/20">
+      <div className="fixed inset-0 z-60 lg:z-100 flex items-center justify-center bg-foreground/20">
         {error ? (
           <div className="rounded-3xl bg-white px-6 py-6 shadow-lg max-w-sm w-full mx-4 flex flex-col items-center justify-center">
             <span className="text-body2 text-red-600">{error}</span>
@@ -195,10 +195,10 @@ export function ProfilePopup({
 
   // ---------- Render หลัก: Modal การ์ดโปรไฟล์ ----------
   const modal = (
-    <div className="fixed inset-0 z-60 lg:z-90">
-      {/* Overlay: popup z-60, NavBar z-70 → NavBar + dropdown อยู่หน้าเสมอ */}
+    <div className="fixed inset-0 z-60 lg:z-100">
+      {/* Mobile: popup อยู่ใต้ nav/dropdown, Desktop: popup อยู่เหนือ NavBar */}
       <div
-        className="fixed inset-x-0 bottom-0 top-13 lg:top-0 z-60 flex items-center justify-center overflow-y-auto bg-foreground/20"
+        className="fixed inset-x-0 bottom-0 top-13 lg:top-0 z-60 lg:z-100 flex items-center justify-center overflow-y-auto bg-foreground/20"
         aria-modal="true"
         role="dialog"
         aria-labelledby="profile-heading"
