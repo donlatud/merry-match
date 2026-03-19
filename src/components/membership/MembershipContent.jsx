@@ -208,40 +208,40 @@ export function MembershipContent({
                 </ul>
               </div>
             </div>
-            {/* Mobile */}
-            <div className="flex flex-col items-start justify-center pb-18 lg:hidden">
-              <div className="flex flex-col items-start justify-center w-full gap-2 py-2 border-b border-gray-300 lg:py-0 px-0 lg:border-none">
-                <h4 className="text-headline4 text-gray-900 w-[343px] px-4">
-                  Billing History
-                </h4>
-                <p className="text-body1 text-gray-700 w-[343px] px-4">
-                  Next billing : {isCancelledStatus ? "—" : billingNextBilling}
-                </p>
-              </div>
-              <div className="w-full border-b border-gray-300 bg-utility-white">
-                <ul className="flex flex-col divide-y divide-gray-100">
-                  {billingTransactions.length > 0 ? (
-                    billingTransactions.map((tx, i) => (
-                      <li
-                        key={tx.id ?? i}
-                        className={`flex flex-wrap items-center justify-between gap-4 p-4 text-body2 text-gray-700 ${i % 2 === 1 ? "bg-gray-100" : ""}`}
-                      >
-                        <span className="w-[104px]">{tx.date}</span>
-                        <span className="w-[118px] text-left">
-                          {tx.packageName}
-                        </span>
-                        <span className="w-[89px] text-right text-gray-800">
-                          {tx.currency} {tx.price}
-                        </span>
-                      </li>
-                    ))
-                  ) : (
-                    <li className="p-4 text-body2 text-gray-500">
-                      No billing history available
+          </div>
+          {/* Mobile */}
+          <div className="flex flex-col items-start justify-center pb-18 lg:hidden">
+            <div className="flex flex-col items-start justify-center w-full gap-2 py-2 border-b border-gray-300 lg:py-0 px-0 lg:border-none">
+              <h4 className="text-headline4 text-gray-900 w-[343px] px-4">
+                Billing History
+              </h4>
+              <p className="text-body1 text-gray-700 w-[343px] px-4">
+                Next billing : {isCancelledStatus ? "—" : billingNextBilling}
+              </p>
+            </div>
+            <div className="w-full border-b border-gray-300 bg-utility-white">
+              <ul className="flex flex-col divide-y divide-gray-100">
+                {billingTransactions.length > 0 ? (
+                  billingTransactions.map((tx, i) => (
+                    <li
+                      key={tx.id ?? i}
+                      className={`flex flex-wrap items-center justify-between gap-4 p-4 text-body2 text-gray-700 ${i % 2 === 1 ? "bg-gray-100" : ""}`}
+                    >
+                      <span className="w-[104px]">{tx.date}</span>
+                      <span className="w-[118px] text-left">
+                        {tx.packageName}
+                      </span>
+                      <span className="w-[89px] text-right text-gray-800">
+                        {tx.currency} {tx.price}
+                      </span>
                     </li>
-                  )}
-                </ul>
-              </div>
+                  ))
+                ) : (
+                  <li className="p-4 text-body2 text-gray-500">
+                    No billing history available
+                  </li>
+                )}
+              </ul>
             </div>
           </div>
         </div>
