@@ -37,6 +37,7 @@ export default function MerryToYouPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useContext(AuthContext);
   const [profiles, setProfiles] = useState([]);
+  const [merryMatch, setMerryMatch] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showUpsellModal, setShowUpsellModal] = useState(false);
@@ -91,6 +92,7 @@ export default function MerryToYouPage() {
         // ใช้ list ที่เป็น "คนที่กด like เรา" จาก API
         setProfiles(res.data?.merryToYouList ?? []);
         setMerryLimit(res.data?.merryLimit ?? { used: 0, total: 20, resetAt: "00:00" });
+        setMerryMatch(res.data?.merryMatch ?? 0);
       } catch (err) {
         setError(err.response?.data?.error || err.message || "โหลดรายการ Merry to you ไม่สำเร็จ");
       } finally {
@@ -123,9 +125,9 @@ export default function MerryToYouPage() {
         const swipedProfile = profiles.find((p) => p.id === profileId) ?? null;
         const modalProfile = swipedProfile
           ? {
-              ...swipedProfile,
-              image: swipedProfile.image ?? swipedProfile.images?.[0] ?? null,
-            }
+            ...swipedProfile,
+            image: swipedProfile.image ?? swipedProfile.images?.[0] ?? null,
+          }
           : null;
 
         setMatchedProfile(modalProfile);
@@ -196,6 +198,23 @@ export default function MerryToYouPage() {
             <div className="py-10 px-4 gap-8 flex flex-col">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-col gap-2">
+                  {/* <button
+                  type="button"
+                  onClick={() => router.push("/merry-list")}
+                  className="hidden lg:inline-flex items-center gap-2 self-auto py-2  text-body3 text-gray-700 cursor-pointer"
+                >
+                  <span className="text-lg leading-none">←</span>
+                  <span>Back</span>
+                </button> */}
+                  {/* Mobile-friendly back button: อยู่ใต้คำอธิบาย ชิดซ้าย เต็มความกว้างพอให้กดง่าย */}
+                  {/* <button
+                    type="button"
+                    onClick={() => router.push("/merry-list")}
+                    className="mt-3 inline-flex items-center gap-2 w-full sm:w-auto py-2 rounded-full text-gray-700 hover:bg-gray-50 cursor-pointer lg:hidden"
+                  >
+                    <span className="text-lg leading-none">←</span>
+                    <span>Back </span>
+                  </button> */}
                   <span className="text-body2 text-beige-700 lg:text-beige-600 font-semibold">
                     MERRY TO YOU
                   </span>
@@ -206,48 +225,68 @@ export default function MerryToYouPage() {
                     See who has already merry’d you and decide who you want to match with.
                   </p>
 
-                  {/* Mobile-friendly back button: อยู่ใต้คำอธิบาย ชิดซ้าย เต็มความกว้างพอให้กดง่าย */}
-                  <button
-                    type="button"
-                    onClick={() => router.push("/merry-list")}
-                    className="mt-3 inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 rounded-full border border-gray-300 text-body3 text-gray-700 hover:bg-gray-50 cursor-pointer lg:hidden"
-                  >
-                    <span className="text-lg leading-none">←</span>
-                    <span>Back to Merry list</span>
-                  </button>
+
                 </div>
 
                 {/* Desktop: ปุ่มกลับอยู่มุมขวาแบบเดิม */}
-                <button
+                {/* <button
                   type="button"
                   onClick={() => router.push("/merry-list")}
-                  className="hidden lg:inline-flex items-center gap-2 self-auto px-4 py-2 rounded-full border border-gray-300 text-body3 text-gray-700 hover:bg-gray-50 cursor-pointer"
+                  className="hidden lg:inline-flex items-center gap-2 self-auto px-4 py-2  text-body3 text-gray-700 hover:bg-gray-50 cursor-pointer"
                 >
                   <span className="text-lg leading-none">←</span>
-                  <span>Back to Merry list</span>
-                </button>
+                  <span>Back</span>
+                </button> */}
               </div>
 
               <div className="flex flex-col lg:flex-row lg:items-end gap-4">
-                <div className="gap-4 w-full flex flex-col sm:flex-row">
-                  <div className="border px-6 py-4 rounded-3xl flex bg-white w-1/2">
-                    <div className="flex flex-col gap-1 w-[]">
-                      <div className="flex items-center justify-between lg:pb-1">
-                        <div className="flex items-center gap-1">
-                          <p className="text-headline4 text-red-500 font-bold">
-                            {formatNumber(profiles.length)}
-                          </p>
-                          <img
-                            src="/merry_icon/icon-merry-to-you.svg"
-                            alt="Merry to you icon"
-                            className="w-6 h-6"
-                          />
-                        </div>
-                        
+                <div className="gap-4 w-full flex flex-row ">
+                  {/* กล่อง Merry to you (เหมือนบนหน้า Merry Match) */}
+                  <div className="border px-6 py-4 rounded-3xl flex bg-white w-full sm:w-1/2">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1 lg:pb-1">
+                        <p className="text-headline4 text-red-500 font-bold">
+                          {formatNumber(profiles.length)}
+                        </p>
+                        <img
+                          src="/merry_icon/icon-merry-to-you.svg"
+                          alt="Merry to you icon"
+                          className="w-6 h-6"
+                        />
                       </div>
                       <p className="text-body2 text-gray-700 font-medium">Merry to you</p>
+                      <p className="text-body5 text-gray-400 -mt-1">
+                      You&apos;re on this list now
+                    </p>
                     </div>
                   </div>
+
+                  {/* กล่อง Merry match – กดแล้วไปหน้า merry-list */}
+                  <button
+                    type="button"
+                    onClick={() => router.push("/merry-list")}
+                    className="group border px-6 py-4 rounded-3xl flex bg-white w-full sm:w-1/2 cursor-pointer hover:-translate-y-0.5 hover:border-red-300 hover:shadow-md transition transform focus:outline-none focus:ring-2 focus:ring-red-200 focus:ring-offset-2"
+                    aria-label="Go to Merry Match list"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1">
+                        <p className="text-headline4 text-red-500 font-bold group-hover:text-red-600">
+                          {formatNumber(merryMatch)}
+                        </p>
+                        <img
+                          src="/merry_icon/icon-merry-match.svg"
+                          alt="Merry match icon"
+                          className="w-12 h-6"
+                        />
+                      </div>
+                      <p className="text-body2 text-gray-700 font-medium text-start group-hover:text-red-500 group-hover:underline">
+                        Merry match
+                      </p>
+                      <p className="text-body5 text-start text-gray-400 -mt-1">
+                        Tap to see merry match
+                      </p>
+                    </div>
+                  </button>
                 </div>
 
                 <div className="flex flex-col w-full lg:w-full items-end lg:items-end px-0">
@@ -300,9 +339,8 @@ export default function MerryToYouPage() {
                     <div className="flex gap-3">
                       {profile.status === 1 && (
                         <ButtonGoToChat
-                          iconClassName={`brightness-0 saturate-0 ${
-                            openingChatProfileId === profile.id ? "opacity-30" : "opacity-60"
-                          }`}
+                          iconClassName={`brightness-0 saturate-0 ${openingChatProfileId === profile.id ? "opacity-30" : "opacity-60"
+                            }`}
                           disabled={openingChatProfileId !== null}
                           onClick={() => handleGoToChat(profile.id)}
                         />

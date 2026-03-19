@@ -252,7 +252,7 @@ export default function MerryListPage() {
     <div>
       <NavBar />
       <div className="mx-auto w-full max-w-[933px] px-4">
-        <div className="py-10 flex flex-col gap-8">
+        <div className="pt-10 pb-6 flex flex-col gap-8">
             <div className="flex flex-col gap-2">
               <span className="text-body2 text-beige-700 lg:text-beige-600 font-semibold">
                 MERRY LIST
@@ -324,24 +324,24 @@ export default function MerryListPage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-1 pt-1 w-full sm:flex-row sm:items-center sm:justify-between">
               <p className="text-body3 text-gray-600">Sort by</p>
 
               {/* Mobile: dropdown (using shared Select component) */}
               <div className="sm:hidden w-full">
-                <div className="rounded-2xl border border-red-100 bg-red-50/70 p-1">
+                <div className="mt-1 rounded-xl  bg-white">
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full rounded-xl border-red-200 bg-white px-4 text-body3 font-medium text-gray-800 shadow-none data-[size=default]:h-10 focus-visible:ring-red-200">
+                    <SelectTrigger className="w-full rounded-lg border border-gray-300 bg-white px-4 text-body3 font-medium text-gray-800 shadow-none data-[size=default]:h-10 focus-visible:ring-2 focus-visible:ring-red-200 focus-visible:ring-offset-0">
                       <SelectValue placeholder="Latest" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-red-100">
-                      <SelectItem value="latest" className="text-body3">
+                    <SelectContent position="popper" sideOffset={4} className="w-(--radix-select-trigger-width) rounded-lg border border-gray-200 bg-white shadow-md z-20">
+                      <SelectItem value="latest" className="text-body3 text-gray-800">
                         Latest
                       </SelectItem>
-                      <SelectItem value="match" className="text-body3">
+                      <SelectItem value="match" className="text-body3 text-gray-800">
                         Merry Match!
                       </SelectItem>
-                      <SelectItem value="notMatch" className="text-body3">
+                      <SelectItem value="notMatch" className="text-body3 text-gray-800">
                         Not Match yet
                       </SelectItem>
                     </SelectContent>
