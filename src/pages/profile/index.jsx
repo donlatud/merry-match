@@ -479,7 +479,14 @@ export default function ProfilePage() {
               </div>
               <div className="gap-1">
                 <h1 className="text-body2">Date of birth</h1>
-                <DatePicker value={dateOfBirth} onChange={setDateOfBirth} label="" placeholder="" />
+                <DatePicker
+                  label=""
+                  value={dateOfBirth}
+                  onChange={setDateOfBirth}
+                  placeholder="Choose date"
+                  className="h-[48px]"
+                  minAge={18}
+                />
               </div>
               <div className="gap-1">
                 <h1 className="text-body2">Location</h1>
