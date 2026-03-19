@@ -59,7 +59,6 @@ const ArrowIcon = ({ direction }) => (
   </svg>
 );
 
-// ✅ รับ onViewProfile prop
 export default function DesktopCardView({ profiles, onSwipe, merryDisabled, onViewProfile }) {
   const [centerIndex, setCenterIndex] = useState(0);
   const [config, setConfig] = useState(getResponsiveConfig(1440));
@@ -71,6 +70,15 @@ export default function DesktopCardView({ profiles, onSwipe, merryDisabled, onVi
     return () => window.removeEventListener("resize", update);
   }, []);
 
+  // ✅ clamp centerIndex เมื่อ profiles ลดลง
+  useEffect(() => {
+    if (profiles.length === 0) {
+      setCenterIndex(0);
+      return;
+    }
+    setCenterIndex((prev) => Math.min(prev, profiles.length - 1));
+  }, [profiles.length]);
+
   const currentProfile = profiles[centerIndex];
 
   const handlePrev = () => setCenterIndex((prev) => (prev - 1 + profiles.length) % profiles.length);
@@ -79,13 +87,13 @@ export default function DesktopCardView({ profiles, onSwipe, merryDisabled, onVi
   const handlePass = () => {
     if (!currentProfile) return;
     onSwipe("left", currentProfile.id);
-    setCenterIndex((prev) => (prev + 1) % profiles.length);
+    setCenterIndex((prev) => Math.max(0, prev - 1));
   };
 
   const handleMerry = () => {
     if (!currentProfile) return;
     onSwipe("right", currentProfile.id);
-    setCenterIndex((prev) => (prev + 1) % profiles.length);
+    setCenterIndex((prev) => Math.max(0, prev - 1));
   };
 
   if (merryDisabled) return <LimitReachedState />;
@@ -95,10 +103,10 @@ export default function DesktopCardView({ profiles, onSwipe, merryDisabled, onVi
 
   return (
     <div className="relative w-full" style={{ height: `${containerHeight}px` }}>
-      <button onClick={handlePrev} className="absolute left-2 top-[45%] -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/40 transition-colors z-50">
+      <button onClick={handlePrev} className="absolute left-2 top-[45%] -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/40 transition-colors z-50 cursor-pointer">
         <ArrowIcon direction="left" />
       </button>
-      <button onClick={handleNext} className="absolute right-2 top-[45%] -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/40 transition-colors z-50">
+      <button onClick={handleNext} className="absolute right-2 top-[45%] -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/40 transition-colors z-50 cursor-pointer">
         <ArrowIcon direction="right" />
       </button>
 
@@ -127,7 +135,6 @@ export default function DesktopCardView({ profiles, onSwipe, merryDisabled, onVi
                 onClick={() => !isCenter && setCenterIndex(index)}
               >
                 <div className="w-full h-full rounded-3xl overflow-hidden">
-                  {/* ✅ ส่ง onViewProfile เฉพาะ center card */}
                   <ProfileCard
                     profile={profile}
                     onViewProfile={isCenter ? onViewProfile : undefined}

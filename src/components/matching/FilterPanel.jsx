@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { PrimaryButton } from "../commons/button/PrimaryButton";
+import { GhostButton } from "../commons/button/GhostButton";
 
 const GENDER_OPTIONS = [
   { id: "Male", label: "Male" },
@@ -20,7 +21,7 @@ export default function FilterPanel({ onSearch }) {
 
   const handleGenderChange = (id, checked) => {
     setSelectedGenders((prev) =>
-      checked ? [...prev, id] : prev.filter((g) => g !== id)
+      checked ? [...prev, id] : prev.filter((g) => g !== id),
     );
   };
 
@@ -35,7 +36,6 @@ export default function FilterPanel({ onSearch }) {
 
   return (
     <div className="flex flex-col gap-6 w-full">
-
       {/* Gender */}
       <div>
         <p className="text-body4 font-bold text-gray-900 mb-4">
@@ -103,18 +103,15 @@ export default function FilterPanel({ onSearch }) {
       <hr className="border-gray-200" />
 
       {/* Buttons */}
-      <div className="flex items-center justify-between gap-3">
-        <button
-          onClick={handleClear}
-          className="text-body4 font-semibold text-red-500 hover:text-red-600 transition-colors cursor-pointer"
-        >
+      <div className="flex items-center justify-center gap-3 pt-50">
+        <GhostButton showIcon={false} onClick={handleClear} className="cursor-pointer">
           Clear
-        </button>
-        <PrimaryButton onClick={handleSearch} className="flex-1 cursor-pointer">
+        </GhostButton>
+
+        <PrimaryButton onClick={handleSearch} className="cursor-pointer">
           Search
         </PrimaryButton>
       </div>
-
     </div>
   );
 }

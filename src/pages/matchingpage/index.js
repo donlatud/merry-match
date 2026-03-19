@@ -148,7 +148,7 @@ export default function MatchingPage() {
         if (data.isMatch) {
           setTimeout(() => {
             setMatchedProfile(swipedProfile ?? null);
-            console.log(swipedProfile);
+      
 
             setMatchModalOpen(true);
           }, 800);
@@ -192,7 +192,7 @@ export default function MatchingPage() {
       : `${remainingCount}/${merryLimit}`;
 
   return (
-    <div className="font-sans h-screen flex flex-col overflow-hidden bg-utility-bg relative">
+    <div className="font-sans h-screen flex flex-col overflow-hidden bg-utility relative">
       <header className="relative z-100 shrink-0">
         <NavBar />
       </header>
@@ -211,7 +211,7 @@ export default function MatchingPage() {
 
       {/* ── MOBILE MAIN VIEW ── */}
       <motion.div
-        className="flex flex-col flex-1 overflow-hidden lg:hidden"
+        className="flex flex-col flex-1 overflow-hidden lg:hidden bg-utility-bg"
         variants={slideUp}
         initial="hidden"
         animate="visible"
@@ -267,7 +267,7 @@ export default function MatchingPage() {
         initial="hidden"
         animate="visible"
       >
-        <div className="flex flex-1 overflow-hidden mx-auto w-full">
+        <div className="flex flex-1 overflow-hidden mx-auto w-full max-w-360 max-h-234">
           {/* Left Sidebar */}
           <motion.aside
             variants={slideLeft}
@@ -286,7 +286,7 @@ export default function MatchingPage() {
           {/* Center Content */}
           <motion.main
             variants={slideUp}
-            className="flex-1 flex flex-col items-center overflow-visible px-6 py-8"
+            className="flex-1 flex flex-col items-center overflow-visible px-6 py-8 bg-utility-bg"
           >
             <div className="w-full flex-1 overflow-hidden">
               {loading ? (

@@ -10,7 +10,7 @@ export function useRealtimeChat(roomId, myProfileId, partner) {
   const { user, loading: authLoading } = useContext(AuthContext);
 
   const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [partnerTyping, setPartnerTyping] = useState(false);
 
@@ -305,7 +305,7 @@ export function useRealtimeChat(roomId, myProfileId, partner) {
         })
 
         .subscribe((status, err) => {
-          console.log("🌐 Realtime status:", status, err ?? "");
+          // console.log("🌐 Realtime status:", status, err ?? "");
           isSettingUpRef.current = false;
         });
 
