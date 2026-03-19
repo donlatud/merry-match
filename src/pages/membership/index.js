@@ -8,6 +8,7 @@ import { useMembershipPageFetch } from "@/hooks/membership/useMembershipPageFetc
 import { useCancelMembership } from "@/hooks/membership/useCancelMembership";
 import { CancelConfirmModal } from "@/components/membership/CancelConfirmModal";
 import { MembershipContent } from "@/components/membership/MembershipContent";
+import { Loading } from "@/components/commons/Loading/Loading";
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 
@@ -65,7 +66,7 @@ export default function MembershipPage() {
       <>
         <NavBar />
         <section className="min-h-screen bg-utility-white lg:bg-utility-bg-main flex items-center justify-center">
-          <div className="w-10 h-10 rounded-full border-4 border-red-400 border-t-transparent animate-spin" />
+          <Loading />
         </section>
         <Footer />
       </>
