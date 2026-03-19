@@ -20,7 +20,7 @@ function LimitReachedState() {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
       <div className="w-32 h-32 rounded-full bg-red-100 flex items-center justify-center mb-2">
-        <img src="/merry_icon/icon-heart.svg" alt="" className="w-16 h-16 opacity-60" />
+        <img src="/merry_icon/icon-match-log.svg" alt="" className="w-16 h-16 opacity-60" />
       </div>
       <h3 className="text-headline4 font-bold text-gray-900">Merry limit reached!</h3>
       <p className="text-body4 text-gray-500 leading-relaxed">
