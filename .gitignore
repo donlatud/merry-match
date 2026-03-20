@@ -44,6 +44,6 @@ next-env.d.ts
 
 # Cursor / VSCode / nested app
 .cursor/
-.vscode/
+/.vscode/
 merry-match/
 docs/
