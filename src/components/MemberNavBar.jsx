@@ -56,7 +56,7 @@ export default function MemberNavBar({ onLogout }) {
         setProfileImageUrl(null);
         return;
       }
-      try {
+      try {ss
         const response = await apiClient.get("/me/profile-image", {
           signal: controller.signal,
         });
@@ -274,7 +274,7 @@ export default function MemberNavBar({ onLogout }) {
 
       {/* Mobile Chat Overlay — render ที่นี่เพื่อให้ทำงานได้ทุกหน้า */}
       {isChatOpen && (
-        <div className="fixed inset-0 z-[150] bg-white lg:hidden flex flex-col">
+        <div className="fixed inset-0 z-150 bg-white lg:hidden flex flex-col">
           <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
             <h2 className="text-body2 font-bold text-gray-900">
               Matches & Chats

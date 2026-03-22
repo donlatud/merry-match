@@ -192,7 +192,7 @@ export default function MatchingPage() {
       : `${remainingCount}/${merryLimit}`;
 
   return (
-    <div className="font-sans h-screen flex flex-col overflow-hidden bg-utility relative">
+    <div className="font-sans h-screen flex flex-col overflow-hidden bg-utility-bg-main relative">
       <header className="relative z-100 shrink-0">
         <NavBar />
       </header>
