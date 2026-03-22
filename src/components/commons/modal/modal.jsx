@@ -1,0 +1,128 @@
+import React from "react";
+
+/**
+ * Modal ยืนยันการกระทำ (มีปุ่มซ้าย + ขวา)
+ *
+ * 
+ * วิธีใช้
+ * ------
+ * 1. ใช้ state ควบคุม open/close เช่น useState(false)
+ * 2. ส่ง props ตามด้านล่าง
+ *
+ * Props
+ * -----
+ * - open (boolean): แสดง/ซ่อน modal
+ * - onClose (function): เมื่อกดปิด (×) หรือต้องการปิดจากภายนอก
+ * - title (string): หัวข้อ modal
+ * - message (string): ข้อความใน modal
+ * - leftText (string): ข้อความปุ่มซ้าย
+ * - rightText (string): ข้อความปุ่มขวา
+ * - onLeftClick (function): เมื่อกดปุ่มซ้าย
+ * - onRightClick (function): เมื่อกดปุ่มขวา
+ * - type ("primary" | "secondary"): กำหนดว่าปุ่มไหนเป็นปุ่มหลัก (แดงเต็ม)
+ *   - "primary" = ปุ่มซ้ายเป็นปุ่มหลัก (แดงเต็ม), ปุ่มขวาเป็นปุ่มรอง (แดงอ่อน)
+ *   - "secondary" = ปุ่มขวาเป็นปุ่มหลัก (แดงเต็ม), ปุ่มซ้ายเป็นปุ่มรอง (แดงอ่อน)
+ * - fullWidthButtons (boolean): ถ้า true ปรับปุ่มให้กว้างเต็ม (flex-1) บน desktop
+ *
+ * ตัวอย่าง
+ * -------
+ * const [open, setOpen] = useState(false);
+ *
+ * <Modal
+ *   open={open}
+ *   onClose={() => setOpen(false)}
+ *   title="ยกเลิกคำร้อง"
+ *   message="คุณต้องการยกเลิกคำร้องนี้หรือไม่?"
+ *   leftText="ไม่ยกเลิก"
+ *   rightText="ยกเลิก"
+ *   onLeftClick={() => setOpen(false)}
+ *   onRightClick={() => { doCancel(); setOpen(false); }}
+ *   type="secondary"
+ * />
+ *
+ */
+const btnSecondary =
+  "w-full sm:w-auto px-6 py-3 rounded-full bg-red-100 text-red-700 text-body2 font-semibold shadow hover:bg-red-200 transition cursor-pointer";
+const btnPrimary =
+  "w-full sm:w-auto px-6 py-3 rounded-full bg-red-500 text-white text-body2 font-semibold shadow hover:bg-red-600 transition cursor-pointer";
+
+const Modal = ({
+  open = false,
+  onClose,
+  title = "Title",
+  message = "Message",
+  leftText = "cancel",
+  rightText = "keep",
+  onLeftClick,
+  onRightClick,
+  type = "primary",
+  fullWidthButtons = false,
+}) => {
+  if (!open) return null;
+
+  const leftIsPrimary = type === "primary";
+  const leftClass =
+    (leftIsPrimary ? btnPrimary : btnSecondary) +
+    (fullWidthButtons ? " sm:w-full sm:flex-1" : "");
+  const rightClass =
+    (leftIsPrimary ? btnSecondary : btnPrimary) +
+    (fullWidthButtons ? " sm:w-full sm:flex-1" : "");
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-foreground/20 md:p-6"
+      aria-modal="true"
+      role="dialog"
+    >
+      <div className="w-full min-w-0 max-w-[min(100%,32rem)] md:min-w-[528px] md:max-w-[528px] bg-card text-card-foreground rounded-2xl shadow-button p-0 border border-border my-auto">
+        {/* หัวข้อ + ปุ่มปิด */}
+        <div className="flex justify-between items-center gap-3 px-4 py-3 md:px-6">
+          <div
+            className="text-body2 font-semibold text-card-foreground truncate min-w-0 md:text-body1"
+            data-testid="modal-title"
+          >
+            {title}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-full p-1 transition hover:bg-red-100"
+            aria-label="Close"
+          >
+            <img
+              src="/merry_icon/icon-close.svg"
+              alt=""
+              width={24}
+              height={24}
+              className="size-6"
+            />
+          </button>
+        </div>
+        <hr className="border-border" />
+        {/* ข้อความ + ปุ่มซ้าย/ขวา */}
+        <div className="p-4 md:p-6">
+          <div className="text-muted-foreground mb-5 md:mb-7 text-body2 text-sm md:text-base">{message}</div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+            <button
+              type="button"
+              onClick={onLeftClick}
+              className={leftClass}
+              autoFocus
+            >
+              {leftText}
+            </button>
+            <button
+              type="button"
+              onClick={onRightClick}
+              className={rightClass}
+            >
+              {rightText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Modal;

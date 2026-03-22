@@ -19,23 +19,35 @@ function Calendar({
   buttonVariant = "ghost",
   formatters,
   components,
+  locale,
   ...props
 }) {
   const defaultClassNames = getDefaultClassNames()
+
+  // derive a locale string for Intl APIs from the `locale` prop.
+  // Support passing either a string (e.g. 'en-US') or a date-fns locale object (which has a `code` property).
+  const localeString = (() => {
+    if (!locale) return "en-US";
+    if (typeof locale === "string") return locale;
+    if (typeof locale === "object" && locale.code) return locale.code;
+    return "en-US";
+  })();
 
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn(
-        "bg-background group/calendar p-3 [--cell-size:--spacing(8)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
+        "bg-background group/calendar p-3 [--cell-size:--spacing(8)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className
       )}
       captionLayout={captionLayout}
       formatters={{
+        // use Intl (via toLocaleString) with the derived locale string so month names follow the
+        // requested locale instead of the system default. Defaults to en-US.
         formatMonthDropdown: (date) =>
-          date.toLocaleString("default", { month: "short" }),
+          date.toLocaleString(localeString, { month: "short" }),
         ...formatters,
       }}
       classNames={{
@@ -63,12 +75,22 @@ function Calendar({
         dropdowns: cn(
           "w-full flex items-center text-sm font-medium justify-center h-(--cell-size) gap-1.5",
           defaultClassNames.dropdowns
-        ),
+        ),Dropdown: ({ value, onChange, children }) => (
+  <select
+    value={value}
+    onChange={onChange}
+    className="h-8 rounded-md border bg-popover px-2 text-sm cursor-pointer"
+  >
+    {children}
+  </select>
+),
         dropdown_root: cn(
           "relative has-focus:border-ring border border-input shadow-xs has-focus:ring-ring/50 has-focus:ring-[3px] rounded-md",
           defaultClassNames.dropdown_root
         ),
-        dropdown: cn("absolute bg-popover inset-0 opacity-0", defaultClassNames.dropdown),
+  // Force the month/year dropdown panel to appear below the caption so both month and
+  // year selectors open downward consistently.
+  dropdown: cn("absolute left-0 mt-2 z-20 bg-popover", defaultClassNames.dropdown),
         caption_label: cn("select-none font-medium", captionLayout === "label"
           ? "text-sm"
           : "rounded-md pl-2 pr-1 flex items-center gap-1 text-sm h-8 [&>svg]:text-muted-foreground [&>svg]:size-3.5", defaultClassNames.caption_label),
@@ -107,6 +129,7 @@ function Calendar({
         ...classNames,
       }}
       components={{
+
         Root: ({ className, rootRef, ...props }) => {
           return (<div data-slot="calendar" ref={rootRef} className={cn(className)} {...props} />);
         },
@@ -134,6 +157,7 @@ function Calendar({
         },
         ...components,
       }}
+      locale={locale}
       {...props} />
   );
 }
