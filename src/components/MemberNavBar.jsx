@@ -56,7 +56,7 @@ export default function MemberNavBar({ onLogout }) {
         setProfileImageUrl(null);
         return;
       }
-      try {ss
+      try {
         const response = await apiClient.get("/me/profile-image", {
           signal: controller.signal,
         });
